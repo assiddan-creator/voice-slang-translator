@@ -216,7 +216,7 @@ async function translate(text) {
     if (parts.length > 1 && parts[1].trim() !== '') {
       // Highlight the slang word before the hyphen with premium green color
       let dictHTML = parts[1].trim().replace(/\*\*(.*?)\*\*/g, '$1');
-      dictHTML = dictHTML.replace(/^(.*?)\s*-/gm, '<b style="color: #4ade80;">$1</b> -');
+      dictHTML = dictHTML.replace(/([^,]+)\s*-/g, '<b style="color: #4ade80;">$1</b> -');
       dictHTML = dictHTML.replace(/\n/g, '<br>');
 
       if (dictContent) dictContent.innerHTML = dictHTML;

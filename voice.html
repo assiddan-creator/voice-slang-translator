@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>🎤 Global Slang Translation AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #050505;              /* deep matte charcoal */
+    --bg-soft: #0a0a0a;
+    --card: #101010;
+    --border-subtle: rgba(0, 0, 0, 0.8);
+    --rasta-green: #228B22;     /* earthy green */
+    --rasta-gold: #D4AF37;      /* warm gold */
+    --rasta-red:  #A52A2A;      /* rich matte red */
+    --text: #f5f0e6;            /* warm cream */
+    --muted: #b3ab9a;
+    --recording: #D4AF37;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Heebo', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    display: flex; flex-direction: column;
+    padding: 14px; user-select: none;
+    max-height: 100vh; overflow-y: auto;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .wrap {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; gap: 10px; flex: 1;
+  }
+
+  /* Drag bar */
+  .drag-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: move; -webkit-app-region: drag;
+  }
+  .drag-dots { color: var(--muted); font-size: 1.1rem; letter-spacing: 3px; opacity: 0.5; }
+  h1 {
+    font-size: 1.05rem; font-weight: 800; text-align: center;
+    letter-spacing: 0.08em;
+    color: var(--rasta-gold);
+  }
+  .close-btn {
+    width: 18px; height: 18px; border-radius: 999px; border: none;
+    background: rgba(0,0,0,0.7); color: var(--muted); font-size: 0.7rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; -webkit-app-region: no-drag; line-height: 1;
+  }
+  .close-btn:hover { background: var(--recording); color: white; }
+
+  /* Section labels */
+  .section-label {
+    font-size: 0.58rem; font-weight: 600;
+    color: var(--text); text-transform: uppercase; letter-spacing: 1.8px;
+    text-align: left; margin-bottom: 5px;
+  }
+
+  /* Language dropdowns */
+  .lang-selects-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .lang-select-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .lang-select {
+    background: #111;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    color: var(--text);
+    border-radius: 16px;
+    padding: 7px 10px;
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.8rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .lang-select:hover,
+  .lang-select:focus { border-color: var(--accent); }
+
+  /* Ensure dropdown list options are dark with light text */
+  select.lang-select option {
+    background-color: #111;
+    color: var(--text);
+  }
+
+  /* Slang intensity slider */
+  .slang-slider-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .slang-slider-label { font-size: 0.7rem; font-weight: 600; color: #fff; }
+  #sliderValue { color: #4ade80; font-weight: bold; }
+  .slang-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px;
+    background: #333; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+    outline: none;
+  }
+  .slang-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 999px;
+    background: #4ade80;
+    cursor: pointer;
+    border: none;
+  }
+  .slang-slider::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 999px;
+    background: #4ade80;
+    cursor: pointer;
+    border: none;
+  }
+  .slang-slider:active::-webkit-slider-thumb {
+    box-shadow: 0 0 10px rgba(74,222,128,0.35);
+  }
+  .slang-slider:active::-moz-range-thumb {
+    box-shadow: 0 0 10px rgba(74,222,128,0.35);
+  }
+  .slang-slider::-webkit-slider-runnable-track { background: transparent; }
+  .slang-slider::-moz-range-track { background: transparent; }
+
+  /* Translation mode toggle */
+  .mode-row { display: flex; gap: 6px; }
+  .mode-btn {
+    flex: 1; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+    text-align: center;
+  }
+  .mode-btn.active-standard {
+    background: radial-gradient(circle at top, #18120a 0%, #050505 70%);
+    color: var(--rasta-gold);
+  }
+  .mode-btn.active-slang {
+    background: radial-gradient(circle at top, #131a10 0%, #050505 70%);
+    color: var(--rasta-green);
+  }
+  .mode-btn:hover:not(.active-standard):not(.active-slang) { border-color: rgba(255,255,255,0.25); color: var(--text); }
+
+  /* Slang location input */
+  .slang-field {
+    display: none; flex-direction: column; gap: 4px;
+  }
+  .slang-field.show { display: flex; }
+  .slang-label { font-size: 0.6rem; color: var(--muted); font-weight: 600; }
+  .slang-input {
+    padding: 8px 12px; border-radius: 9px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    background: radial-gradient(circle at top, #131313 0%, #050505 70%);
+    color: var(--text); font-family: 'Heebo', sans-serif; font-size: 0.82rem;
+    outline: none; transition: border-color 0.2s; user-select: text;
+  }
+  .slang-input::placeholder { color: var(--muted); }
+  .slang-input:focus { border-color: var(--green); }
+
+  /* Input text area + manual translate */
+  .input-text-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .text-box, #inputText {
+    width: 100%; min-height: 60px; height: 60px; padding: 10px 12px;
+    border-radius: 16px; resize: vertical;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    color: var(--text); font-family: 'Heebo', sans-serif; font-size: 0.85rem;
+    outline: none; transition: border-color 0.2s; user-select: text;
+  }
+  .text-box::placeholder { color: var(--muted); }
+  .text-box:focus { border-color: var(--accent); }
+  .neon-btn {
+    padding: 8px 14px; border-radius: 999px; border: none;
+    background: linear-gradient(135deg, var(--rasta-red), var(--rasta-gold), var(--rasta-green));
+    color: #1c201f; font-family: 'Heebo', sans-serif; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .neon-btn:hover { transform: translateY(-1px); }
+
+  /* Mic */
+  .mic-area { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .mic-btn {
+    width: 72px; height: 72px; border-radius: 999px; border: none; cursor: pointer;
+    background: linear-gradient(145deg, var(--rasta-red), var(--rasta-gold), var(--rasta-green));
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; font-size: 1.9rem;
+  }
+  .mic-btn:hover { transform: scale(1.04); }
+  .mic-btn:active { transform: scale(0.97); }
+  .mic-btn.recording {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+  }
+  @keyframes pulse-ring { from { transform: scale(1); } to { transform: scale(1); } }
+  .mic-label { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+  .mic-label.active { color: var(--recording); }
+
+  /* Output */
+  .output-card {
+    background: radial-gradient(circle at top, #151515 0%, #050505 70%);
+    border-radius: 16px; padding: 13px; flex: 1; min-height: 80px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45); display: flex; flex-direction: column;
+  }
+  .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+  .output-label { font-size: 0.58rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+  .translating-badge {
+    font-size: 0.58rem; color: var(--rasta-gold); background: rgba(5,5,5,0.9);
+    border: 1px solid transparent; border-radius: 999px; padding: 2px 9px;
+    display: none; align-items: center; gap: 3px;
+  }
+  .translating-badge.show { display: flex; }
+  .spinner { width: 7px; height: 7px; border: 1.5px solid rgba(108,99,255,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #output { font-size: 0.92rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; flex: 1; overflow-y: auto; }
+  #interim { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-top: 2px; }
+  .placeholder { color: var(--muted); font-weight: 300; font-size: 0.82rem; }
+
+  /* Slang dictionary box */
+  .dict-box {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 16px;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    font-size: 0.9em;
+    direction: ltr;
+    text-align: left;
+  }
+  #dictContent {
+    direction: ltr;
+    text-align: left;
+  }
+  .dict-box h4 {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  #dictContent b {
+    color: #f5e8ff;
+    text-shadow: 0 0 6px rgba(108,99,255,0.7);
+  }
+
+  /* Actions */
+  .actions { display: flex; gap: 7px; }
+  .paste-btn {
+    flex: 2; padding: 8px 12px; border-radius: 999px; border: none;
+    background: linear-gradient(135deg, var(--rasta-red), var(--rasta-gold), var(--rasta-green));
+    color: #1c201f; font-family: 'Heebo', sans-serif; font-size: 0.8rem;
+    font-weight: 700; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .paste-btn:hover { transform: translateY(-1px); }
+  .action-btn {
+    flex: 1; padding: 8px; border-radius: 999px; border: 1px solid transparent;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    color: var(--text);
+    font-family: 'Heebo', sans-serif; font-size: 0.76rem; cursor: pointer; transition: all 0.2s;
+  }
+  .action-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+  /* Status */
+  .status-bar { display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .status-dot.listening { background: var(--recording); animation: blink 1s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+  .status-text { font-size: 0.72rem; color: var(--muted); }
+
+  .toast {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: rgba(8,8,8,0.96); color: var(--text); padding: 7px 18px;
+    border-radius: 18px; font-size: 0.78rem; opacity: 0;
+    pointer-events: none; transition: all 0.25s ease; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Drag bar -->
+  <div class="drag-bar">
+    <span class="drag-dots">• • •</span>
+    <h1>🎤 GLOBAL SLANG TRANSLATION AI</h1>
+    <button class="close-btn" id="closeBtn">✕</button>
+  </div>
+
+  <!-- Input & Output language -->
+  <div>
+    <div class="section-label">Input / Output language</div>
+    <div class="lang-selects-row">
+      <div class="lang-select-wrap">
+        <label class="section-label" for="inputLang">Input</label>
+        <select id="inputLang" class="lang-select">
+          <option value="he-IL" selected>Hebrew</option>
+          <option value="en-US">English</option>
+          <option value="es-ES">Spanish</option>
+          <option value="fr-FR">French</option>
+          <option value="ru-RU">Russian</option>
+          <option value="ar-SA">Arabic</option>
+          <option value="ja-JP">Japanese</option>
+          <option value="zh-CN">Chinese</option>
+          <option value="it-IT">Italian</option>
+          <option value="de-DE">German</option>
+          <option value="pt-BR">Portuguese</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="tr-TR">Turkish</option>
+          <option value="ko-KR">Korean</option>
+          <option value="nl-NL">Dutch</option>
+          <option value="pl-PL">Polish</option>
+          <option value="vi-VN">Vietnamese</option>
+          <option value="th-TH">Thai</option>
+          <option value="id-ID">Indonesian</option>
+          <option value="sv-SE">Swedish</option>
+          <option value="el-GR">Greek</option>
+        </select>
+      </div>
+      <div class="lang-select-wrap">
+        <label class="section-label" for="outputLang">Output</label>
+        <select id="outputLang" class="lang-select">
+          <optgroup label="💎 Premium Slangs">
+            <option value="Jamaican Patois">Jamaican Patois</option>
+            <option value="London Roadman">London Roadman</option>
+            <option value="New York Brooklyn">New York Brooklyn</option>
+            <option value="Tokyo Gyaru">Tokyo Gyaru</option>
+            <option value="Paris Banlieue">Paris Banlieue</option>
+            <option value="Russian Street">Russian Street</option>
+            <option value="Mumbai Hinglish">Mumbai Hinglish</option>
+            <option value="Mexico City Barrio">Mexico City Barrio</option>
+            <option value="Rio Favela">Rio Favela</option>
+          </optgroup>
+          <optgroup label="🌍 Standard Languages">
+            <option value="English (Standard)" selected>English</option>
+            <option value="Hebrew (Standard)">Hebrew</option>
+            <option value="Spanish">Spanish</option>
+            <option value="French">French</option>
+            <option value="German">German</option>
+            <option value="Italian">Italian</option>
+            <option value="Russian">Russian</option>
+            <option value="Portuguese">Portuguese</option>
+            <option value="Japanese">Japanese</option>
+          </optgroup>
+        </select>
+        <input type="text" id="customCityInput" placeholder="Enter city (e.g. Rome)..." style="display: none; background: #111; color: var(--text); padding: 8px; margin-top: 5px; width: 100%; border: 1px solid #333; border-radius: 5px;">
+      </div>
+    </div>
+    <div id="slangSliderContainer" style="margin-top: 15px; margin-bottom: 15px; display: none;">
+      <label class="slang-slider-label" for="slangSlider">Slang Intensity: <span id="sliderValue">Medium</span></label>
+      <input type="range" min="1" max="3" value="2" id="slangSlider" class="slang-slider">
+    </div>
+  </div>
+
+  <!-- Translation mode -->
+  <div id="translationStyleContainer">
+    <div class="section-label">Translation style</div>
+    <div class="mode-row">
+      <button class="mode-btn active-standard" id="btnStandard">📖 Formal</button>
+      <button class="mode-btn" id="btnSlang">🛣️ Slang / Street</button>
+    </div>
+  </div>
+
+  <!-- Location input - always visible -->
+  <div id="locationFieldContainer" style="margin-top: 15px; margin-bottom: 15px;">
+    <label style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; display: block;">📍 Location / dialect (e.g. London, Cairo, Scotland)</label>
+    <input type="text" id="slangLocation" style="width: 100%; background: #111; color: #fff; padding: 10px; border: 1px solid #333; border-radius: 5px; outline: none; font-family: inherit;">
+  </div>
+
+  <!-- Mic -->
+  <div class="mic-area">
+    <button class="mic-btn" id="micBtn">🎤</button>
+    <span class="mic-label" id="micLabel">TAP IN &amp; TALK</span>
+  </div>
+
+  <!-- Input text (paste or from mic) -->
+  <div class="input-text-wrap">
+    <textarea id="inputText" placeholder="Speak into the mic or paste text here..." class="text-box"></textarea>
+    <button id="manualTranslateBtn" class="neon-btn">Translate text</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-card">
+    <div class="output-header">
+      <div class="output-label" id="outputLabel">English</div>
+      <div class="translating-badge" id="translatingBadge">
+        <div class="spinner"></div><span>Translating...</span>
+      </div>
+    </div>
+    <div id="output"><span class="placeholder">Your text will appear here...</span></div>
+    <div id="interim"></div>
+  </div>
+
+  <div id="dictContainer" class="dict-box" style="display: none;">
+    <h4>📚 Slang Dictionary</h4>
+    <div id="dictContent"></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="paste-btn" id="pasteBtn">📌 Paste to site</button>
+    <button class="action-btn" id="copyBtn">📋 Copy</button>
+    <button class="action-btn" id="clearBtn">🗑️</button>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">Ready — click the microphone button</span>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script src="voice.js"></script>
+</body>
+</html>

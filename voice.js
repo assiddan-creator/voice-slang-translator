@@ -240,6 +240,66 @@ async function translate(text) {
   }
 }
 
+// Secure translation via Vercel serverless endpoint.
+// Keeps `translate()` active for local Gemini testing.
+async function translateSecure(text) {
+  if (!text.trim()) return '';
+
+  const outputSelect = document.getElementById('outputLang');
+  const currentLang = outputSelect?.value || '';
+
+  const selectedOption = outputSelect?.selectedOptions?.[0];
+  const isPremiumSelected = selectedOption?.parentElement?.label === '💎 Premium Slangs';
+
+  const customLocation = document.getElementById('slangLocation')
+    ? document.getElementById('slangLocation').value.trim()
+    : '';
+
+  const slangLevel = parseInt(document.getElementById('slangSlider')?.value, 10) || 2;
+
+  const endpoint = '/api/translate';
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      currentLang,
+      translationMode,
+      slangLocation: customLocation,
+      slangLevel,
+      isPremiumSelected
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error('Secure translate failed:', res.status, err);
+    return text;
+  }
+
+  const { fullText } = await res.json();
+  const raw = (fullText || text).trim();
+
+  const parts = raw.split('|||');
+  const translatedText = parts[0].trim();
+
+  const dictContainer = document.getElementById('dictContainer');
+  const dictContent = document.getElementById('dictContent');
+
+  if (parts.length > 1 && parts[1].trim() !== '') {
+    let dictHTML = parts[1].trim().replace(/\*\*(.*?)\*\*/g, '$1');
+    dictHTML = dictHTML.replace(/([^,]+)\s*-/g, '<b style="color: #4ade80;">$1</b> -');
+    dictHTML = dictHTML.replace(/\n/g, '<br>');
+
+    if (dictContent) dictContent.innerHTML = dictHTML;
+    if (dictContainer) dictContainer.style.display = 'block';
+  } else {
+    if (dictContainer) dictContainer.style.display = 'none';
+  }
+
+  return translatedText || text;
+}
+
 // --- Speech Recognition ---
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

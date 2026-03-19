@@ -1,5 +1,8 @@
-const GEMINI_API_KEY = "AIzaSyCtTLmYS7OUkr_bkOtisSPQgImJUpCf3Ok";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY.trim();
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+  (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY
+    ? GEMINI_API_KEY.trim()
+    : '');
 
 let recognition = null;
 let isRecording = false;
@@ -275,8 +278,12 @@ function initRecognition() {
 function toggleRecording() { isRecording ? stopRecording() : startRecording(); }
 
 function startRecording() {
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_API_KEY_HERE') {
-    showToast('⚠️ Paste your API key in voice.js');
+  const apiKey =
+    (typeof GEMINI_API_KEY !== 'undefined' && typeof GEMINI_API_KEY === 'string')
+      ? GEMINI_API_KEY.trim()
+      : '';
+  if (!apiKey || apiKey === 'WAITING_FOR_NEW_KEY' || apiKey === 'YOUR_API_KEY_HERE') {
+    showToast('⚠️ Paste your API key in config.js');
     return;
   }
   recognition = initRecognition();

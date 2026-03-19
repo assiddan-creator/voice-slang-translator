@@ -1,0 +1,20 @@
+Live Gemini API test (location-based slang with standard language)
+
+Programmatic parameters
+- input text: Brother, I'm exhausted, I didn't sleep all night because of work.
+- currentLang: English
+- translationMode: slang
+- slangLocation/customLocation: London, UK
+- slangIntensity slider value: 3 (Hardcore)
+
+API result
+- HTTP status: 403
+- JSON error:
+{
+  "error": {
+    "code": 403,
+    "message": "Your API key was reported as leaked. Please use another API key.",
+    "status": "PERMISSION_DENIED"
+  }
+}
+

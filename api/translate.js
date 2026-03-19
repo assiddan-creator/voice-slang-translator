@@ -30,11 +30,13 @@ function buildPrompt({
     '|||\n' +
     '<A short dictionary of 1-3 key slang words used, formatted as: Word - Meaning>\n' +
     'Do not include any other text, explanations, or system instructions.';
+  const antiLeakageRule =
+    "CRITICAL ANTI-LEAKAGE RULE: You MUST NOT use any Hebrew or Israeli slang transliterated into English/Latin characters (e.g., 'sababa', 'magniv', 'yalla', 'achi', etc.) unless the requested target language is explicitly Hebrew. The slang used MUST strictly and exclusively belong to the requested target language and location.";
 
   // Standard vs Slang prompt structure
   if (!slangRequested) {
     return {
-      prompt: `You are a professional translator. Translate or rephrase the following text into standard, formal, dictionary-accurate ${currentLang}. DO NOT use any slang. Return ONLY the final text. No conversational filler or explanations. Text: '''${text}'''`,
+      prompt: `You are a professional translator. Translate or rephrase the following text into standard, formal, dictionary-accurate ${currentLang}. DO NOT use any slang. Return ONLY the final text. No conversational filler or explanations.\n${antiLeakageRule}\nText: '''${text}'''`,
       slangRequested: false
     };
   }
@@ -56,7 +58,7 @@ function buildPrompt({
     translationMode === 'slang' && isRussianLang ? `\n${russianCriticalRule}` : '';
 
   return {
-    prompt: `${base}${russianRuleInjection}\nText: '''${text}'''${formattingRule}`,
+    prompt: `${base}${russianRuleInjection}\n${antiLeakageRule}\nText: '''${text}'''${formattingRule}`,
     slangRequested: true
   };
 }

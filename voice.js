@@ -1,9 +1,3 @@
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-  (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY
-    ? GEMINI_API_KEY.trim()
-    : '');
-
 let recognition = null;
 let isRecording = false;
 let hebrewTranscript = '';
@@ -140,27 +134,21 @@ function setMode(mode) {
   updateUI();
 }
 
-// --- Translation via Gemini ---
+// --- Translation via Vercel backend ---
 async function translate(text) {
   if (!text.trim()) return '';
-  const currentLang = document.getElementById('outputLang').value;
-  
-  const customLocation = document.getElementById('slangLocation') ? document.getElementById('slangLocation').value.trim() : '';
-  
-  const slangLevel = parseInt(document.getElementById('slangSlider').value, 10) || 2;
-  const INTENSITY_INSTRUCTIONS = {
-    1: "Light intensity: Use mostly standard language with just a tiny hint of local flavor. Maximum 1 or 2 very common, mild slang words. Keep it highly readable and polite.",
-    2: "Medium intensity: Authentic, casual street talk. A natural mix of standard language and popular local slang.",
-    3: "Hardcore intensity: Heavy, thick street slang. Use deep local terminology, expressions, and authentic street grammar."
-  };
-  const intensityPrompt = INTENSITY_INSTRUCTIONS[slangLevel] || INTENSITY_INSTRUCTIONS[2];
 
   const outputSelect = document.getElementById('outputLang');
+  const currentLang = outputSelect?.value || '';
+
   const selectedOption = outputSelect?.selectedOptions?.[0];
   const isPremiumSelected = selectedOption?.parentElement?.label === '💎 Premium Slangs';
 
-  // Treat as slang whenever the user explicitly chose a premium slang or typed a custom location.
-  const slangRequested = translationMode === 'slang' || isPremiumSelected || customLocation !== '';
+  const customLocation = document.getElementById('slangLocation')
+    ? document.getElementById('slangLocation').value.trim()
+    : '';
+
+  const slangLevel = parseInt(document.getElementById('slangSlider')?.value, 10) || 2;
 
   setBadge(true);
   const dictContainerEl = document.getElementById('dictContainer');
@@ -180,84 +168,7 @@ async function translate(text) {
   const loadingText = loadingMessages[currentLang] || 'One sec, cooking it up... ⏳';
   setOutput(loadingText);
 
-  try {
-    let prompt = '';
-
-    const formattingRule = "\n\nCRITICAL FORMATTING RULE: You MUST return the output in exactly this format and nothing else:\n<Your Slang Translation>\n|||\n<A short dictionary of 1-3 key slang words used, formatted as: Word - Meaning>\nDo not include any other text, explanations, or system instructions.";
-
-    if (!slangRequested) {
-      prompt = `You are a professional translator. Translate or rephrase the following text into standard, formal, dictionary-accurate ${currentLang}. DO NOT use any slang. Return ONLY the final text. No conversational filler or explanations. Text: '''${text}'''`;
-    } else {
-      // SLANG MODE
-      const isRussianLang = currentLang === 'Russian' || currentLang === 'Russian Street' || (typeof currentLang === 'string' && currentLang.toLowerCase().includes('russian'));
-      const russianCriticalRule = "CRITICAL FOR RUSSIAN: Use highly authentic, modern youth street slang (current Moscow/St. Petersburg urban vibes). Do NOT use outdated 90s jargon, formal words, or literal translations. The output must sound perfectly natural for a modern native speaker texting a close friend.";
-
-      const base = customLocation
-        ? `You are an expert in local street culture. Translate the text into ${currentLang}, but specifically inject the authentic street slang and local dialect of ${customLocation}. Slang intensity instructions: ${intensityPrompt}.`
-        : `You are an expert in local street culture. Translate the text into authentic street slang specifically for ${currentLang}. Slang intensity instructions: ${intensityPrompt}.`;
-
-      const russianRuleInjection = (translationMode === 'slang' && isRussianLang) ? `\n${russianCriticalRule}` : '';
-      prompt = `${base}${russianRuleInjection}\nText: '''${text}'''${formattingRule}`;
-    }
-
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: slangRequested ? 1.0 : 0.2, maxOutputTokens: 2048 }
-      })
-    });
-    
-    const data = await res.json();
-    setBadge(false);
-    const fullText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || text).trim();
-    console.log("RAW GEMINI RESPONSE:", fullText);
-    
-    const parts = fullText.split('|||');
-    const translatedText = parts[0].trim();
-
-    const dictContainer = document.getElementById('dictContainer');
-    const dictContent = document.getElementById('dictContent');
-
-    if (parts.length > 1 && parts[1].trim() !== '') {
-      // Highlight the slang word before the hyphen with premium green color
-      let dictHTML = parts[1].trim().replace(/\*\*(.*?)\*\*/g, '$1');
-      dictHTML = dictHTML.replace(/([^,]+)\s*-/g, '<b style="color: #4ade80;">$1</b> -');
-      dictHTML = dictHTML.replace(/\n/g, '<br>');
-
-      if (dictContent) dictContent.innerHTML = dictHTML;
-      if (dictContainer) dictContainer.style.display = 'block';
-    } else {
-      if (dictContainer) dictContainer.style.display = 'none';
-    }
-
-    return translatedText || text;
-  } catch(e) {
-    console.error("Gemini API Error:", e);
-    setBadge(false);
-    return text;
-  }
-}
-
-// Secure translation via Vercel serverless endpoint.
-// Keeps `translate()` active for local Gemini testing.
-async function translateSecure(text) {
-  if (!text.trim()) return '';
-
-  const outputSelect = document.getElementById('outputLang');
-  const currentLang = outputSelect?.value || '';
-
-  const selectedOption = outputSelect?.selectedOptions?.[0];
-  const isPremiumSelected = selectedOption?.parentElement?.label === '💎 Premium Slangs';
-
-  const customLocation = document.getElementById('slangLocation')
-    ? document.getElementById('slangLocation').value.trim()
-    : '';
-
-  const slangLevel = parseInt(document.getElementById('slangSlider')?.value, 10) || 2;
-
-  const endpoint = '/api/translate';
+  const endpoint = 'https://voice-slang-translator.vercel.app/api/translate';
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -274,6 +185,7 @@ async function translateSecure(text) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     console.error('Secure translate failed:', res.status, err);
+    setBadge(false);
     return text;
   }
 
@@ -297,6 +209,7 @@ async function translateSecure(text) {
     if (dictContainer) dictContainer.style.display = 'none';
   }
 
+  setBadge(false);
   return translatedText || text;
 }
 
@@ -338,14 +251,6 @@ function initRecognition() {
 function toggleRecording() { isRecording ? stopRecording() : startRecording(); }
 
 function startRecording() {
-  const apiKey =
-    (typeof GEMINI_API_KEY !== 'undefined' && typeof GEMINI_API_KEY === 'string')
-      ? GEMINI_API_KEY.trim()
-      : '';
-  if (!apiKey || apiKey === 'WAITING_FOR_NEW_KEY' || apiKey === 'YOUR_API_KEY_HERE') {
-    showToast('⚠️ Paste your API key in config.js');
-    return;
-  }
   recognition = initRecognition();
   if (!recognition) { setStatus('Use Chrome', ''); return; }
   try {

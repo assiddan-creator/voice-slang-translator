@@ -186,11 +186,15 @@ async function translate(text) {
       prompt = `You are a professional translator. Translate or rephrase the following text into standard, formal, dictionary-accurate ${currentLang}. DO NOT use any slang. Return ONLY the final text. No conversational filler or explanations. Text: '''${text}'''`;
     } else {
       // SLANG MODE
+      const isRussianLang = currentLang === 'Russian' || currentLang === 'Russian Street' || (typeof currentLang === 'string' && currentLang.toLowerCase().includes('russian'));
+      const russianCriticalRule = "CRITICAL FOR RUSSIAN: Use highly authentic, modern youth street slang (current Moscow/St. Petersburg urban vibes). Do NOT use outdated 90s jargon, formal words, or literal translations. The output must sound perfectly natural for a modern native speaker texting a close friend.";
+
       const base = customLocation
         ? `You are an expert in local street culture. Translate the text into ${currentLang}, but specifically inject the authentic street slang and local dialect of ${customLocation}. Slang intensity instructions: ${intensityPrompt}.`
         : `You are an expert in local street culture. Translate the text into authentic street slang specifically for ${currentLang}. Slang intensity instructions: ${intensityPrompt}.`;
 
-      prompt = `${base}\nText: '''${text}'''${formattingRule}`;
+      const russianRuleInjection = (translationMode === 'slang' && isRussianLang) ? `\n${russianCriticalRule}` : '';
+      prompt = `${base}${russianRuleInjection}\nText: '''${text}'''${formattingRule}`;
     }
 
     const res = await fetch(GEMINI_URL, {

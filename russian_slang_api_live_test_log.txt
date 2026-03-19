@@ -1,0 +1,16 @@
+Live Gemini API test (modern Russian slang prompt)
+
+Input text:
+Brother, I'm exhausted, I didn't sleep all night because of work.
+
+currentLang: Russian
+translationMode: slang
+slangLevel: 2 (Medium)
+
+--- RAW GEMINI FULL_TEXT ---
+Бро, я убитый, всю ночь не спал из-за работы.
+|||
+Бро - Брат, друг
+Убитый - Очень уставший, измотанный
+--- END RAW ---
+

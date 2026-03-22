@@ -4,7 +4,7 @@
   "short_name": "Slang Translator",
   "version": "1.0.1",
   "description": "Turn your voice or text into authentic global street slang instantly. Switch vibes from Brooklyn to Jamaica with a click!",
-  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "<all_urls>",
     "https://generativelanguage.googleapis.com/*"

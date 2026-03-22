@@ -168,49 +168,68 @@ async function translate(text) {
   const loadingText = loadingMessages[currentLang] || 'One sec, cooking it up... ⏳';
   setOutput(loadingText);
 
-  const endpoint = 'https://voice-slang-translator.vercel.app/api/translate';
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      currentLang,
-      translationMode,
-      slangLocation: customLocation,
-      slangLevel,
-      isPremiumSelected
-    })
-  });
+  const ERROR_UI =
+    'Translation failed - Please check your setup or connection';
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    console.error('Secure translate failed:', res.status, err);
+  try {
+    const endpoint = 'https://voice-slang-translator.vercel.app/api/translate';
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        currentLang,
+        translationMode,
+        slangLocation: customLocation,
+        slangLevel,
+        isPremiumSelected
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('Secure translate failed:', res.status, err);
+      setOutput(ERROR_UI);
+      const dictContainer = document.getElementById('dictContainer');
+      if (dictContainer) dictContainer.style.display = 'none';
+      setBadge(false);
+      return text;
+    }
+
+    const data = await res.json().catch((e) => {
+      console.error('Translation response parse error:', e);
+      return {};
+    });
+    const { fullText } = data || {};
+    const raw = (fullText || text).trim();
+
+    const parts = raw.split('|||');
+    const translatedText = parts[0].trim();
+
+    const dictContainer = document.getElementById('dictContainer');
+    const dictContent = document.getElementById('dictContent');
+
+    if (parts.length > 1 && parts[1].trim() !== '') {
+      let dictHTML = parts[1].trim().replace(/\*\*(.*?)\*\*/g, '$1');
+      dictHTML = dictHTML.replace(/([^,]+)\s*-/g, '<b style="color: #4ade80;">$1</b> -');
+      dictHTML = dictHTML.replace(/\n/g, '<br>');
+
+      if (dictContent) dictContent.innerHTML = dictHTML;
+      if (dictContainer) dictContainer.style.display = 'block';
+    } else {
+      if (dictContainer) dictContainer.style.display = 'none';
+    }
+
+    setBadge(false);
+    return translatedText || text;
+  } catch (e) {
+    console.error('Translation request failed:', e);
+    setOutput(ERROR_UI);
+    const dictContainer = document.getElementById('dictContainer');
+    if (dictContainer) dictContainer.style.display = 'none';
     setBadge(false);
     return text;
   }
-
-  const { fullText } = await res.json();
-  const raw = (fullText || text).trim();
-
-  const parts = raw.split('|||');
-  const translatedText = parts[0].trim();
-
-  const dictContainer = document.getElementById('dictContainer');
-  const dictContent = document.getElementById('dictContent');
-
-  if (parts.length > 1 && parts[1].trim() !== '') {
-    let dictHTML = parts[1].trim().replace(/\*\*(.*?)\*\*/g, '$1');
-    dictHTML = dictHTML.replace(/([^,]+)\s*-/g, '<b style="color: #4ade80;">$1</b> -');
-    dictHTML = dictHTML.replace(/\n/g, '<br>');
-
-    if (dictContent) dictContent.innerHTML = dictHTML;
-    if (dictContainer) dictContainer.style.display = 'block';
-  } else {
-    if (dictContainer) dictContainer.style.display = 'none';
-  }
-
-  setBadge(false);
-  return translatedText || text;
 }
 
 // --- Speech Recognition ---

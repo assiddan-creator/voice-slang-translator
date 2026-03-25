@@ -6,65 +6,93 @@ function buildPrompt({
   translationMode,
   slangLocation,
   slangLevel,
-  isPremiumSelected
+  isPremiumSelected,
+  context,
+  previousMessage
 }) {
   const INTENSITY_INSTRUCTIONS = {
-    1: 'Light intensity: Use mostly standard language with just a tiny hint of local flavor. Maximum 1 or 2 very common, mild slang words. Keep it highly readable and polite.',
-    2: 'Medium intensity: Authentic, casual street talk. A natural mix of standard language and popular local slang.',
-    3: 'Hardcore intensity: Heavy, thick street slang. Use deep local terminology, expressions, and authentic street grammar.'
+    1: 'Use mostly standard language with just a tiny hint of local flavor. Max 1-2 very mild slang words. Keep it readable.',
+    2: 'Authentic casual street talk. Natural mix of standard language and popular local slang.',
+    3: 'Heavy thick street slang. Deep local terminology, authentic street grammar, full immersion.'
   };
 
-  const intensityPrompt =
-    INTENSITY_INSTRUCTIONS[slangLevel] || INTENSITY_INSTRUCTIONS[2];
+  const CONTEXT_INSTRUCTIONS = {
+    'dm':      'This is a casual text message between close friends.',
+    'post':    'This is a social media post meant to be public and punchy.',
+    'reply':   'This is a reply in an argument or comeback situation — keep it sharp.',
+    'hype':    'This is a hype message — energetic, loud, encouraging.',
+    'flirt':   'This is a flirtatious message — smooth, charming, confident.',
+    'default': 'This is a casual message between friends.'
+  };
 
+  const intensityPrompt = INTENSITY_INSTRUCTIONS[slangLevel] || INTENSITY_INSTRUCTIONS[2];
+  const contextPrompt = CONTEXT_INSTRUCTIONS[context] || CONTEXT_INSTRUCTIONS['default'];
   const customLocation = slangLocation ? String(slangLocation).trim() : '';
 
-  // Match voice.js logic: treat as slang whenever user picked slang mode,
-  // or premium slang, or typed a custom location.
   const slangRequested =
     translationMode === 'slang' || !!isPremiumSelected || customLocation !== '';
 
-  const formattingRule =
-    '\n\nCRITICAL FORMATTING RULE: You MUST return the output in exactly this format and nothing else:\n' +
-    '<Your Slang Translation>\n' +
-    '|||\n' +
-    '<A short dictionary of 1-3 key slang words used, formatted as: Word - Meaning>\n' +
-    'Do not include any other text, explanations, or system instructions.';
   const antiLeakageRule =
-    "CRITICAL ANTI-LEAKAGE RULE: You MUST NOT use any Hebrew or Israeli slang transliterated into English/Latin characters (e.g., 'sababa', 'magniv', 'yalla', 'achi', etc.) unless the requested target language is explicitly Hebrew. The slang used MUST strictly and exclusively belong to the requested target language and location.";
+    `ANTI-LEAKAGE: Never use Hebrew or Israeli slang transliterated into Latin characters (sababa, yalla, achi, magniv, etc.) unless the target language is explicitly Hebrew. All slang must belong exclusively to the target language and location.`;
 
-  // Standard vs Slang prompt structure
+  const lengthRule =
+    `LENGTH RULE: Keep the output roughly the same length as the input. Do not expand, explain, or add information that was not in the original text.`;
+
+  const noAIRule =
+    `AUTHENTICITY RULE: Write exactly like a real person from that location would text a friend. No formal structure. No complete sentences if the original was not complete. No filler words. Raw and human.`;
+
+  const formattingRule =
+    `\n\nOUTPUT FORMAT — follow this exactly and nothing else:\n` +
+    `<rewritten text>\n` +
+    `|||\n` +
+    `<dictionary: 1-3 key slang words used, format: Word - Meaning>\n` +
+    `Do not add any other text, explanation, or preamble.`;
+
   if (!slangRequested) {
     return {
-      prompt: `You are a professional translator. Translate or rephrase the following text into standard, formal, dictionary-accurate ${currentLang}. DO NOT use any slang. Return ONLY the final text. No conversational filler or explanations.\n${antiLeakageRule}\nText: '''${text}'''`,
+      prompt:
+        `You are a professional translator.\n` +
+        `Translate the following into standard, formal, dictionary-accurate ${currentLang}.\n` +
+        `Return ONLY the translated text. No explanations.\n` +
+        `${antiLeakageRule}\n` +
+        `${lengthRule}\n` +
+        `Text: '''${text}'''`,
       slangRequested: false
     };
   }
 
-  const base = customLocation
-    ? `You are an expert in local street culture. Translate the text into ${currentLang}, but specifically inject the authentic street slang and local dialect of ${customLocation}. Slang intensity instructions: ${intensityPrompt}.`
-    : `You are an expert in local street culture. Translate the text into authentic street slang specifically for ${currentLang}. Slang intensity instructions: ${intensityPrompt}.`;
+  const locationLine = customLocation
+    ? `You are a 22-year-old from ${customLocation} who speaks ${currentLang}. You grew up there, you text your friends every day, and you write exactly like people from your neighborhood.`
+    : `You are a 22-year-old native ${currentLang} speaker from the streets. You grew up there, you text your friends every day, and you write exactly like people from your city.`;
+
+  const previousLine = previousMessage
+    ? `\nFor consistency, the previous message in this conversation was rewritten as: "${previousMessage}". Keep the same voice and energy.`
+    : '';
 
   const isRussianLang =
-    currentLang === 'Russian' ||
-    currentLang === 'Russian Street' ||
-    (typeof currentLang === 'string' && currentLang.toLowerCase().includes('russian'));
+    typeof currentLang === 'string' && currentLang.toLowerCase().includes('russian');
 
-  const russianCriticalRule =
-    'CRITICAL FOR RUSSIAN: Use highly authentic, modern youth street slang (current Moscow/St. Petersburg urban vibes). Do NOT use outdated 90s jargon, formal words, or literal translations. The output must sound perfectly natural for a modern native speaker texting a close friend.';
-
-  // Mirror voice.js injection condition: only when translationMode is slang.
-  const russianRuleInjection =
-    translationMode === 'slang' && isRussianLang ? `\n${russianCriticalRule}` : '';
+  const russianRule = isRussianLang && translationMode === 'slang'
+    ? `\nCRITICAL FOR RUSSIAN: Use modern youth slang from Moscow or St. Petersburg. No 90s jargon. No formal words. Sound like a 20-year-old texting on Telegram right now.`
+    : '';
 
   return {
-    prompt: `${base}${russianRuleInjection}\n${antiLeakageRule}\nText: '''${text}'''${formattingRule}`,
+    prompt:
+      `${locationLine}${previousLine}\n\n` +
+      `Context: ${contextPrompt}\n` +
+      `Intensity: ${intensityPrompt}\n` +
+      `${antiLeakageRule}\n` +
+      `${lengthRule}\n` +
+      `${noAIRule}` +
+      `${russianRule}\n\n` +
+      `Rewrite the following text the way YOU would actually send it:\n` +
+      `'''${text}'''` +
+      `${formattingRule}`,
     slangRequested: true
   };
 }
 
 module.exports = async function handler(req, res) {
-  // Basic CORS for extension -> Vercel calls.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -79,11 +107,8 @@ module.exports = async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === 'string') {
-    try {
-      body = JSON.parse(body);
-    } catch (_) {
-      return res.status(400).json({ error: 'Invalid JSON body' });
-    }
+    try { body = JSON.parse(body); }
+    catch (_) { return res.status(400).json({ error: 'Invalid JSON body' }); }
   }
 
   const {
@@ -92,7 +117,9 @@ module.exports = async function handler(req, res) {
     translationMode,
     slangLocation,
     slangLevel,
-    isPremiumSelected
+    isPremiumSelected,
+    context,
+    previousMessage
   } = body || {};
 
   if (!text || !currentLang) {
@@ -105,7 +132,9 @@ module.exports = async function handler(req, res) {
     translationMode: translationMode === 'slang' ? 'slang' : 'standard',
     slangLocation,
     slangLevel: parseInt(slangLevel, 10) || 2,
-    isPremiumSelected: !!isPremiumSelected
+    isPremiumSelected: !!isPremiumSelected,
+    context: context || 'default',
+    previousMessage: previousMessage || null
   });
 
   const GEMINI_URL =
@@ -118,20 +147,17 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: slangRequested ? 1.0 : 0.2,
-          maxOutputTokens: 2048
+          temperature: slangRequested ? 0.7 : 0.2,
+          maxOutputTokens: 1024
         }
       })
     });
 
     const data = await geminiRes.json();
     const fullText = (
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      ''
+      data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     ).trim();
 
-    // Return the raw model output (already in strict "translation ||| dictionary" format).
-    // Client will parse via `split('|||')`.
     if (!fullText) {
       return res.status(502).json({ error: 'Gemini returned no candidates', data });
     }
@@ -141,4 +167,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Gemini request failed', details: String(e?.message || e) });
   }
 };
-

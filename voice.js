@@ -3,6 +3,7 @@ let isRecording = false;
 let hebrewTranscript = '';
 let displayedText = '';
 let translationMode = 'standard'; // 'standard' | 'slang'
+let lastTranslatedText = ''; // זוכר את התרגום הקודם לשמירת קול עקבי
 
 // --- Wire up buttons ---
 document.getElementById('micBtn').addEventListener('click', toggleRecording);
@@ -25,7 +26,6 @@ document.getElementById('outputLang').addEventListener('change', async function 
   const sel = document.getElementById('outputLang');
   document.getElementById('outputLabel').textContent = sel.options[sel.selectedIndex].text;
 
-  // Persist selected output language
   try {
     chrome.storage?.local.set({ savedOutputLang: sel.value });
   } catch (_) {}
@@ -33,6 +33,7 @@ document.getElementById('outputLang').addEventListener('change', async function 
   updateUI();
 
   if (hebrewTranscript.trim()) {
+    lastTranslatedText = ''; // איפוס הזיכרון כשמשנים שפה
     displayedText = await translate(hebrewTranscript);
     setOutput(displayedText);
   }
@@ -41,15 +42,15 @@ document.getElementById('outputLang').addEventListener('change', async function 
 // Set initial output label from selected option & restore persisted settings
 (function () {
   const sel = document.getElementById('outputLang');
-  if(sel && sel.options[sel.selectedIndex]) {
-      document.getElementById('outputLabel').textContent = sel.options[sel.selectedIndex].text;
+  if (sel && sel.options[sel.selectedIndex]) {
+    document.getElementById('outputLabel').textContent = sel.options[sel.selectedIndex].text;
   }
 
-  // Restore saved language and slider from storage
   try {
-    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel'], (data) => {
+    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel', 'savedContext'], (data) => {
       const langSelect = document.getElementById('outputLang');
       const slider = document.getElementById('slangSlider');
+      const contextSelect = document.getElementById('messageContext');
 
       if (langSelect && data.savedOutputLang) {
         langSelect.value = data.savedOutputLang;
@@ -63,19 +64,32 @@ document.getElementById('outputLang').addEventListener('change', async function 
         document.getElementById('sliderValue').textContent =
           SLIDER_LABELS[+slider.value] || 'Medium';
       }
+
+      if (contextSelect && data.savedContext) {
+        contextSelect.value = data.savedContext;
+      }
     });
   } catch (_) {}
 })();
 
-// Slang intensity slider: 1 = Light, 2 = Medium, 3 = Hardcore
+// Slang intensity slider
 const SLIDER_LABELS = { 1: 'Light', 2: 'Medium', 3: 'Hardcore' };
 document.getElementById('slangSlider').addEventListener('input', function () {
   document.getElementById('sliderValue').textContent = SLIDER_LABELS[+this.value] || 'Medium';
-  // Persist slider value
   try {
     chrome.storage?.local.set({ savedSlangLevel: +this.value });
   } catch (_) {}
 });
+
+// Context selector — שומר את הבחירה
+const contextSelectEl = document.getElementById('messageContext');
+if (contextSelectEl) {
+  contextSelectEl.addEventListener('change', function () {
+    try {
+      chrome.storage?.local.set({ savedContext: this.value });
+    } catch (_) {}
+  });
+}
 
 function updateUI() {
   const outputLangEl = document.getElementById('outputLang');
@@ -88,13 +102,13 @@ function updateUI() {
   const translationStyleContainer = document.getElementById('translationStyleContainer');
   const locationFieldContainer = document.getElementById('locationFieldContainer');
   const sliderContainer = document.getElementById('slangSliderContainer');
+  const contextContainer = document.getElementById('contextContainer');
 
   if (isPremium) {
     if (translationStyleContainer) translationStyleContainer.style.display = 'none';
     if (locationFieldContainer) locationFieldContainer.style.display = 'none';
     if (sliderContainer) sliderContainer.style.display = 'block';
-
-    // Force internal logic to slang generation for premium dialects
+    if (contextContainer) contextContainer.style.display = 'block';
     translationMode = 'slang';
   } else {
     if (translationStyleContainer) translationStyleContainer.style.display = 'block';
@@ -102,9 +116,11 @@ function updateUI() {
     if (translationMode === 'standard') {
       if (locationFieldContainer) locationFieldContainer.style.display = 'none';
       if (sliderContainer) sliderContainer.style.display = 'none';
+      if (contextContainer) contextContainer.style.display = 'none';
     } else {
       if (locationFieldContainer) locationFieldContainer.style.display = 'block';
       if (sliderContainer) sliderContainer.style.display = 'block';
+      if (contextContainer) contextContainer.style.display = 'block';
     }
   }
 }
@@ -122,14 +138,14 @@ function setMode(mode) {
   const btnSlg = document.getElementById('btnSlang');
   const locationFieldContainer = document.getElementById('locationFieldContainer');
 
-  // Update button active states
   if (btnStd) btnStd.className = 'mode-btn' + (mode === 'standard' ? ' active-standard' : '');
   if (btnSlg) btnSlg.className = 'mode-btn' + (mode === 'slang' ? ' active-slang' : '');
 
-  // Show/hide the location input depending on translation mode
   if (locationFieldContainer) {
     locationFieldContainer.style.display = (mode === 'slang') ? 'block' : 'none';
   }
+
+  if (mode === 'standard') lastTranslatedText = ''; // איפוס זיכרון בעת מעבר למצב רגיל
 
   updateUI();
 }
@@ -150,6 +166,9 @@ async function translate(text) {
 
   const slangLevel = parseInt(document.getElementById('slangSlider')?.value, 10) || 2;
 
+  // קריאת ההקשר שנבחר
+  const context = document.getElementById('messageContext')?.value || 'default';
+
   setBadge(true);
   const dictContainerEl = document.getElementById('dictContainer');
   if (dictContainerEl) dictContainerEl.style.display = 'none';
@@ -168,8 +187,7 @@ async function translate(text) {
   const loadingText = loadingMessages[currentLang] || 'One sec, cooking it up... ⏳';
   setOutput(loadingText);
 
-  const ERROR_UI =
-    'Translation failed - Please check your setup or connection';
+  const ERROR_UI = 'Translation failed - Please check your setup or connection';
 
   try {
     const endpoint = 'https://voice-slang-translator.vercel.app/api/translate';
@@ -182,7 +200,9 @@ async function translate(text) {
         translationMode,
         slangLocation: customLocation,
         slangLevel,
-        isPremiumSelected
+        isPremiumSelected,
+        context,
+        previousMessage: lastTranslatedText || null  // שולח את התרגום הקודם
       })
     });
 
@@ -205,6 +225,9 @@ async function translate(text) {
 
     const parts = raw.split('|||');
     const translatedText = parts[0].trim();
+
+    // שומר את התרגום הנוכחי לשימוש בתרגום הבא
+    if (translatedText) lastTranslatedText = translatedText;
 
     const dictContainer = document.getElementById('dictContainer');
     const dictContent = document.getElementById('dictContent');
@@ -237,7 +260,7 @@ function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
   const r = new SR();
-  r.continuous = true; r.interimResults = true; 
+  r.continuous = true; r.interimResults = true;
   r.lang = document.getElementById('inputLang')?.value || 'he-IL';
   r.onstart = () => setStatus('Listening...', 'listening');
   r.onresult = async (e) => {
@@ -278,7 +301,7 @@ function startRecording() {
     const micLabel = document.getElementById('micLabel');
     if (micBtn) { micBtn.textContent = '⏹️'; micBtn.classList.add('recording'); }
     if (micLabel) { micLabel.textContent = 'Click to stop'; micLabel.classList.add('active'); }
-  } catch(e) { setStatus('Error: ' + e.message, ''); }
+  } catch (e) { setStatus('Error: ' + e.message, ''); }
 }
 
 function stopRecording() {
@@ -307,7 +330,9 @@ function copyText() {
 }
 
 function clearText() {
-  hebrewTranscript = ''; displayedText = '';
+  hebrewTranscript = '';
+  displayedText = '';
+  lastTranslatedText = ''; // מאפס גם את הזיכרון
   const outputEl = document.getElementById('output');
   if (outputEl) outputEl.innerHTML = '<span class="placeholder">Your text will appear here...</span>';
   const interimEl = document.getElementById('interim');
@@ -322,9 +347,9 @@ function setOutput(text) {
   if (text?.trim()) el.textContent = text;
   else el.innerHTML = '<span class="placeholder">Your text will appear here...</span>';
 }
-function setBadge(show) { 
-    const badge = document.getElementById('translatingBadge');
-    if(badge) badge.classList.toggle('show', show); 
+function setBadge(show) {
+  const badge = document.getElementById('translatingBadge');
+  if (badge) badge.classList.toggle('show', show);
 }
 function setStatus(text, state) {
   const statusText = document.getElementById('statusText');
@@ -333,7 +358,7 @@ function setStatus(text, state) {
   if (statusDot) statusDot.className = 'status-dot' + (state ? ' ' + state : '');
 }
 function showToast(msg) {
-  const t = document.getElementById('toast'); 
+  const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);

@@ -72,8 +72,17 @@ function buildPrompt({
   const isRussianLang =
     typeof currentLang === 'string' && currentLang.toLowerCase().includes('russian');
 
-  const russianRule = isRussianLang && translationMode === 'slang'
-    ? `\nCRITICAL FOR RUSSIAN: Use modern youth slang from Moscow or St. Petersburg. No 90s jargon. No formal words. Sound like a 20-year-old texting on Telegram right now.`
+  const russianRule = isRussianLang
+    ? `
+CRITICAL RULES FOR RUSSIAN — read carefully:
+
+1. GRAMMAR IS NON-NEGOTIABLE: Every sentence must be grammatically correct in Russian. Slang words must fit naturally into correct Russian sentence structure. Never force a slang word into a position where it breaks grammar. For example — "торчим" requires a location or reason, never a direct object like "тебя". Wrong: "мы тут торчим тебя". Correct: "мы тут торчим без тебя" or "мы тут зависаем".
+
+2. USE ONLY CURRENT SLANG: Modern youth slang used right now in Moscow and St. Petersburg on Telegram and VK. Examples of current real slang: бро, чё, норм, кек, лол, зависать, чилить, агонь, жиза, краш, кринж, рофл, мб (может быть), имхо, ору, пон (понял). Do NOT use: outdated 90s criminal slang (пацан, братан in a serious way, базар, конкретно).
+
+3. NATURAL RHYTHM: Russians text in short punchy sentences. They drop pronouns when obvious. They use abbreviations. Sound like a real 20-year-old texting on their phone right now — not a translation.
+
+4. SELF-CHECK BEFORE OUTPUT: Before returning the result, mentally re-read it as a native Russian speaker. If any sentence sounds unnatural or grammatically broken — fix it.`
     : '';
 
   return {

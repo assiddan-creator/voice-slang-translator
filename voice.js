@@ -317,8 +317,13 @@ async function speakWithOpenAiTts(text) {
   });
 
   if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`OpenAI TTS failed (${res.status}): ${errText}`);
+    const errJson = await res.json().catch(() => null);
+    const apiErrorMessage =
+      errJson?.error?.message ||
+      errJson?.message ||
+      `OpenAI TTS failed (${res.status})`;
+    alert(apiErrorMessage);
+    throw new Error(apiErrorMessage);
   }
 
   const audioBlob = await res.blob();

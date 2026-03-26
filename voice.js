@@ -5,7 +5,7 @@ let displayedText = '';
 let translationMode = 'standard'; // 'standard' | 'slang'
 let lastTranslatedText = ''; // זוכר את התרגום הקודם לשמירת קול עקבי
 let premiumVoiceEnabled = false;
-let openAiTtsApiKey = '';
+let googleCloudApiKey = '';
 let premiumAudioPlayer = null;
 
 // --- Wire up buttons ---
@@ -126,12 +126,12 @@ document.getElementById('outputLang').addEventListener('change', async function 
   }
 
   try {
-    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel', 'savedContext', 'premiumVoiceEnabled', 'openAiTtsApiKey'], (data) => {
+    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel', 'savedContext', 'premiumVoiceEnabled', 'googleCloudApiKey'], (data) => {
       const langSelect = document.getElementById('outputLang');
       const slider = document.getElementById('slangSlider');
       const contextSelect = document.getElementById('messageContext');
       const premiumToggle = document.getElementById('premiumVoiceToggle');
-      const apiKeyInput = document.getElementById('openaiApiKeyInput');
+      const apiKeyInput = document.getElementById('googleApiKeyInput');
 
       if (langSelect && data.savedOutputLang) {
         langSelect.value = data.savedOutputLang;
@@ -151,9 +151,9 @@ document.getElementById('outputLang').addEventListener('change', async function 
       }
 
       premiumVoiceEnabled = !!data.premiumVoiceEnabled;
-      openAiTtsApiKey = (data.openAiTtsApiKey || '').trim();
+      googleCloudApiKey = (data.googleCloudApiKey || '').trim();
       if (premiumToggle) premiumToggle.checked = premiumVoiceEnabled;
-      if (apiKeyInput && openAiTtsApiKey) apiKeyInput.value = openAiTtsApiKey;
+      if (apiKeyInput && googleCloudApiKey) apiKeyInput.value = googleCloudApiKey;
     });
   } catch (_) {}
 })();
@@ -187,12 +187,12 @@ if (premiumVoiceToggleEl) {
   });
 }
 
-const openAiApiKeyInputEl = document.getElementById('openaiApiKeyInput');
-if (openAiApiKeyInputEl) {
-  openAiApiKeyInputEl.addEventListener('input', function () {
-    openAiTtsApiKey = this.value.trim();
+const googleApiKeyInputEl = document.getElementById('googleApiKeyInput');
+if (googleApiKeyInputEl) {
+  googleApiKeyInputEl.addEventListener('input', function () {
+    googleCloudApiKey = this.value.trim();
     try {
-      chrome.storage?.local.set({ openAiTtsApiKey: openAiTtsApiKey });
+      chrome.storage?.local.set({ googleCloudApiKey: googleCloudApiKey });
     } catch (_) {}
   });
 }
@@ -297,45 +297,53 @@ function pickVoiceByLang(preferredLangCode) {
 }
 
 function shouldUsePremiumVoice() {
-  return !!premiumVoiceEnabled && !!openAiTtsApiKey;
+  return !!premiumVoiceEnabled && !!googleCloudApiKey;
 }
 
-async function speakWithOpenAiTts(text) {
-  const voiceName = translationMode === 'slang' ? 'nova' : 'alloy';
-  const res = await fetch('https://api.openai.com/v1/audio/speech', {
+async function speakWithGoogleCloudTts(text) {
+  const voiceName = translationMode === 'slang' ? 'en-US-Journey-F' : 'en-US-Journey-D';
+  const res = await fetch(
+    'https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(googleCloudApiKey),
+    {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${openAiTtsApiKey}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini-tts',
-      voice: voiceName,
-      input: text,
-      format: 'mp3'
+      input: { text },
+      voice: {
+        languageCode: 'en-US',
+        name: voiceName
+      },
+      audioConfig: {
+        audioEncoding: 'MP3'
+      }
     })
-  });
+    }
+  );
 
   if (!res.ok) {
     const errJson = await res.json().catch(() => null);
-    const apiErrorMessage =
-      errJson?.error?.message ||
-      errJson?.message ||
-      `OpenAI TTS failed (${res.status})`;
+    const apiErrorMessage = errJson?.error?.message || errJson?.message || `Google Cloud TTS failed (${res.status})`;
     alert(apiErrorMessage);
     throw new Error(apiErrorMessage);
   }
 
-  const audioBlob = await res.blob();
-  const audioUrl = URL.createObjectURL(audioBlob);
+  const data = await res.json().catch(() => null);
+  const audioContent = data?.audioContent;
+  if (!audioContent) {
+    const fallbackError = data?.error?.message || 'Google Cloud TTS returned no audioContent';
+    alert(fallbackError);
+    throw new Error(fallbackError);
+  }
+
+  const audioUrl = `data:audio/mp3;base64,${audioContent}`;
 
   if (premiumAudioPlayer) {
     try { premiumAudioPlayer.pause(); } catch (_) {}
   }
 
   premiumAudioPlayer = new Audio(audioUrl);
-  premiumAudioPlayer.onended = () => URL.revokeObjectURL(audioUrl);
-  premiumAudioPlayer.onerror = () => URL.revokeObjectURL(audioUrl);
   await premiumAudioPlayer.play();
 }
 
@@ -378,7 +386,7 @@ function speakWithNativeTts(text) {
 async function speakTranslatedText(text) {
   if (shouldUsePremiumVoice()) {
     try {
-      await speakWithOpenAiTts(text);
+      await speakWithGoogleCloudTts(text);
       return;
     } catch (e) {
       console.error('Premium TTS failed, falling back to native:', e);

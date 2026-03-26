@@ -325,7 +325,7 @@ async function speakWithGoogleCloudTts(text) {
 
   // Dynamic voice mapping based on selected dialect
   const VOICE_MAP = {
-    'New York Brooklyn': { languageCode: 'en-US', name: 'en-US-Journey-D', gender: 'MALE', pitch: -1.5 },
+    'New York Brooklyn': { languageCode: 'en-US', name: 'en-US-Journey-D', gender: 'MALE', pitch: 0 },
     'London Roadman': { languageCode: 'en-GB', name: 'en-GB-Neural2-D', gender: 'MALE', pitch: -1.5 },
     'Jamaican Patois': { languageCode: 'en-GB', name: 'en-GB-Neural2-B', gender: 'MALE', pitch: -1.5 },
     'Tokyo Gyaru': { languageCode: 'ja-JP', name: 'ja-JP-Neural2-B', gender: 'FEMALE', pitch: 0.5 },
@@ -344,7 +344,7 @@ async function speakWithGoogleCloudTts(text) {
 
   // Default fallback voice
   if (!voiceConfig) {
-    voiceConfig = { languageCode: 'en-US', name: 'en-US-Journey-F', gender: 'FEMALE', pitch: 0.5 };
+    voiceConfig = { languageCode: 'en-US', name: 'en-US-Journey-F', gender: 'FEMALE', pitch: 0 };
   }
 
   const res = await fetch(

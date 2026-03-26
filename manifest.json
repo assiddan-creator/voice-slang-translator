@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Voice to Text & Slang Translator",
   "short_name": "Slang Translator",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Turn your voice or text into authentic global street slang instantly. Switch vibes from Brooklyn to Jamaica with a click!",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [

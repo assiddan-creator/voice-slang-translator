@@ -12,6 +12,24 @@ document.getElementById('copyBtn').addEventListener('click', copyText);
 document.getElementById('clearBtn').addEventListener('click', clearText);
 document.getElementById('closeBtn').addEventListener('click', () => window.close());
 
+// Native text-to-speech for the translated output
+const ttsBtnEl = document.getElementById('ttsPlayBtn');
+if (ttsBtnEl) {
+  ttsBtnEl.addEventListener('click', () => {
+    const fallbackOutputEl = document.getElementById('output');
+    const rawOutputText = (fallbackOutputEl?.textContent || '').trim();
+    const textToSpeak =
+      (displayedText && displayedText.trim()) ? displayedText.trim() : rawOutputText;
+
+    if (!textToSpeak || textToSpeak.includes('Your text will appear here')) {
+      showToast('No translation to play');
+      return;
+    }
+
+    speakTranslatedText(textToSpeak);
+  });
+}
+
 // Manual translate: paste text and click to translate
 document.getElementById('manualTranslateBtn').addEventListener('click', async function () {
   const text = document.getElementById('inputText').value.trim();
@@ -127,6 +145,104 @@ function updateUI() {
 
 document.addEventListener('DOMContentLoaded', updateUI);
 updateUI();
+
+// --- Native Text-to-Speech ---
+let ttsVoices = [];
+
+function refreshTtsVoices() {
+  try {
+    ttsVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  } catch (_) {
+    ttsVoices = [];
+  }
+}
+
+if (window.speechSynthesis) {
+  refreshTtsVoices();
+  window.speechSynthesis.onvoiceschanged = refreshTtsVoices;
+}
+
+function getPreferredTtsLangCode(langValue) {
+  const v = String(langValue || '');
+  if (v.includes('Jamaican Patois')) return 'en-JM';
+  if (v.includes('London Roadman')) return 'en-GB';
+  if (v.includes('New York Brooklyn')) return 'en-US';
+  if (v.includes('Tokyo Gyaru')) return 'ja-JP';
+  if (v.includes('Paris Banlieue')) return 'fr-FR';
+  if (v.includes('Russian Street') || v.includes('Russian')) return 'ru-RU';
+  if (v.includes('Mumbai Hinglish')) return 'hi-IN';
+  if (v.includes('Mexico City Barrio')) return 'es-MX';
+  if (v.includes('Rio Favela')) return 'pt-BR';
+
+  if (v.includes('Hebrew (Standard)')) return 'he-IL';
+  if (v.includes('English (Standard)')) return 'en-US';
+  if (v === 'Spanish') return 'es-ES';
+  if (v === 'French') return 'fr-FR';
+  if (v === 'German') return 'de-DE';
+  if (v === 'Italian') return 'it-IT';
+  if (v === 'Portuguese') return 'pt-PT';
+  if (v === 'Japanese') return 'ja-JP';
+
+  // Safe fallback
+  return 'en-US';
+}
+
+function pickVoiceByLang(preferredLangCode) {
+  const voices = (ttsVoices && ttsVoices.length ? ttsVoices : (window.speechSynthesis.getVoices() || []));
+  if (!voices.length) return null;
+
+  const target = String(preferredLangCode || '').toLowerCase();
+  if (!target) return null;
+
+  // 1) exact / prefix match
+  let voice = voices.find((v) => v.lang && v.lang.toLowerCase() === target) ||
+    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(target + '-')) ||
+    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(target));
+  if (voice) return voice;
+
+  // 2) match by base language (e.g., 'en' for 'en-GB')
+  const base = target.split('-')[0];
+  voice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(base));
+  if (voice) return voice;
+
+  return null;
+}
+
+function speakTranslatedText(text) {
+  if (!window.speechSynthesis) {
+    showToast('Text-to-speech not supported');
+    return;
+  }
+
+  const outputLangEl = document.getElementById('outputLang');
+  const langValue = outputLangEl?.value || 'English (Standard)';
+  const preferredLangCode = getPreferredTtsLangCode(langValue);
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  utterance.lang = preferredLangCode;
+
+  const voice = pickVoiceByLang(preferredLangCode);
+  if (voice) {
+    utterance.voice = voice;
+  } else {
+    // Fallback to an English voice if the browser doesn't support the dialect
+    const enVoice = pickVoiceByLang('en-US') || pickVoiceByLang('en-GB') || pickVoiceByLang('en');
+    if (enVoice) {
+      utterance.voice = enVoice;
+      utterance.lang = enVoice.lang;
+    } else {
+      utterance.lang = 'en-US';
+    }
+  }
+
+  try {
+    window.speechSynthesis.cancel();
+  } catch (_) {}
+  window.speechSynthesis.speak(utterance);
+}
 
 // Mode buttons
 document.getElementById('btnStandard').addEventListener('click', () => setMode('standard'));

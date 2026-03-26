@@ -215,6 +215,22 @@
   }
   .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
   .output-label { font-size: 0.58rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+  .output-label-wrap { display: flex; align-items: center; gap: 8px; }
+  .tts-btn {
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; user-select: none;
+    font-size: 0.9rem;
+  }
+  .tts-btn:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+  .tts-btn:active { transform: translateY(0); }
   .translating-badge {
     font-size: 0.58rem; color: var(--rasta-gold); background: rgba(5,5,5,0.9);
     border: 1px solid transparent; border-radius: 999px; padding: 2px 9px;
@@ -404,7 +420,10 @@
   <!-- Output -->
   <div class="output-card">
     <div class="output-header">
-      <div class="output-label" id="outputLabel">English</div>
+      <div class="output-label-wrap">
+        <div class="output-label" id="outputLabel">English</div>
+        <button class="tts-btn" id="ttsPlayBtn" type="button" title="Play translation">🔊</button>
+      </div>
       <div class="translating-badge" id="translatingBadge">
         <div class="spinner"></div><span>Translating...</span>
       </div>

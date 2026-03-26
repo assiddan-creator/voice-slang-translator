@@ -8,6 +8,24 @@ let premiumVoiceEnabled = false;
 let googleCloudApiKey = '';
 let premiumAudioPlayer = null;
 
+function setTtsEngineStatus(state) {
+  const ledEl = document.getElementById('ttsEngineLed');
+  const textEl = document.getElementById('ttsEngineText');
+  if (!ledEl || !textEl) return;
+
+  ledEl.classList.remove('waiting', 'google', 'fallback');
+  if (state === 'google') {
+    ledEl.classList.add('google');
+    textEl.textContent = 'Engine: Google Premium';
+  } else if (state === 'fallback') {
+    ledEl.classList.add('fallback');
+    textEl.textContent = 'Engine: Native Fallback';
+  } else {
+    ledEl.classList.add('waiting');
+    textEl.textContent = 'Engine: Waiting';
+  }
+}
+
 // --- Wire up buttons ---
 document.getElementById('micBtn').addEventListener('click', toggleRecording);
 document.getElementById('pasteBtn').addEventListener('click', pasteToPage);
@@ -90,6 +108,7 @@ if (duoTheirTurnBtn) {
 
 // Default view
 setViewMode('standard');
+setTtsEngineStatus('waiting');
 
 // Manual translate: paste text and click to translate
 document.getElementById('manualTranslateBtn').addEventListener('click', async function () {
@@ -301,7 +320,7 @@ function shouldUsePremiumVoice() {
 }
 
 async function speakWithGoogleCloudTts(text) {
-  const voiceName = translationMode === 'slang' ? 'en-US-Journey-F' : 'en-US-Journey-D';
+  const voiceName = 'en-US-Journey-F';
   const res = await fetch(
     'https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(googleCloudApiKey),
     {
@@ -345,6 +364,7 @@ async function speakWithGoogleCloudTts(text) {
 
   premiumAudioPlayer = new Audio(audioUrl);
   await premiumAudioPlayer.play();
+  setTtsEngineStatus('google');
 }
 
 function speakWithNativeTts(text) {
@@ -390,6 +410,7 @@ async function speakTranslatedText(text) {
       return;
     } catch (e) {
       console.error('Premium TTS failed, falling back to native:', e);
+      setTtsEngineStatus('fallback');
       showToast('Premium voice unavailable, using native voice');
     }
   }

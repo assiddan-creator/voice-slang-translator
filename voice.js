@@ -77,7 +77,7 @@ function setViewMode(mode) {
     if (isRecording) stopRecording();
   } catch (_) {}
   try {
-    if (duoActiveTurn) stopDuoRecording();
+    stopDuoRecording();
   } catch (_) {}
 }
 
@@ -671,7 +671,15 @@ async function translate(text) {
   const loadingText = loadingMessages[currentLang] || 'One sec, cooking it up... ⏳';
   setOutput(loadingText);
 
-  const ERROR_UI = 'Translation failed - Please check your setup or connection';
+  const ERROR_UI_MAP = {
+    'Russian Street': 'Ошибка перевода — проверь подключение',
+    'Tokyo Gyaru': '翻訳に失敗しました。接続を確認してください',
+    'Paris Banlieue': 'Erreur de traduction — vérifie ta connexion',
+    'Mexico City Barrio': 'Error de traducción — revisa tu conexión',
+    'Rio Favela': 'Erro na tradução — verifica sua conexão',
+    'Mumbai Hinglish': 'Translation fail hua — connection check karo',
+  };
+  const ERROR_UI = ERROR_UI_MAP[currentLang] || 'Translation failed - Please check your setup or connection';
 
   try {
     const endpoint = 'https://voice-slang-translator.vercel.app/api/translate';
@@ -858,7 +866,7 @@ function initDuoRecognition(langCode) {
     stopDuoRecording();
   };
 
-  r.onend = () => { if (isRecording) r.start(); };
+  r.onend = () => { if (duoActiveTurn) r.start(); };
   return r;
 }
 

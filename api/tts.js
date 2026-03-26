@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
 
   const VOICE_MAP = {
     'New York Brooklyn':   { voice_id: 'Casual_Guy',   speed: 1.05, pitch: 0,  emotion: 'happy' },
-    'London Roadman':      { voice_id: 'Casual_Guy',   speed: 1.05, pitch: -1, emotion: 'neutral' },
+    'London Roadman': { voice_id: 'Confident_Man', speed: 1.05, pitch: -2, emotion: 'neutral' },
     'Jamaican Patois':     { voice_id: 'Casual_Guy',   speed: 1.0,  pitch: -1, emotion: 'happy' },
     'Tokyo Gyaru':         { voice_id: 'Sweet_Girl',   speed: 1.1,  pitch: 2,  emotion: 'happy' },
     'Paris Banlieue':      { voice_id: 'Casual_Guy',   speed: 1.05, pitch: -1, emotion: 'neutral' },

@@ -324,6 +324,74 @@ function getSelectedTtsEngine() {
   return el ? el.value : 'minimax';
 }
 
+function getVoiceTuning() {
+  return {
+    speed: parseFloat(document.getElementById('voiceSpeed')?.value || '1.05'),
+    pitch: parseInt(document.getElementById('voicePitch')?.value || '0', 10),
+    volume: parseFloat(document.getElementById('voiceVolume')?.value || '1.0'),
+    emotion: document.getElementById('voiceEmotion')?.value || 'neutral'
+  };
+}
+
+function initTuningPanel() {
+  const engineSelector = document.getElementById('ttsEngineSelector');
+  const tuningPanel = document.getElementById('minimaxTuningPanel');
+  if (!engineSelector || !tuningPanel) return;
+
+  function updatePanelVisibility() {
+    tuningPanel.style.display = engineSelector.value === 'minimax' ? 'block' : 'none';
+  }
+
+  engineSelector.addEventListener('change', updatePanelVisibility);
+  updatePanelVisibility();
+
+  const speedSlider = document.getElementById('voiceSpeed');
+  const pitchSlider = document.getElementById('voicePitch');
+  const volumeSlider = document.getElementById('voiceVolume');
+
+  if (speedSlider) speedSlider.addEventListener('input', function() {
+    document.getElementById('speedValue').textContent = parseFloat(this.value).toFixed(2);
+    try { chrome.storage?.local.set({ voiceSpeed: +this.value }); } catch(_) {}
+  });
+
+  if (pitchSlider) pitchSlider.addEventListener('input', function() {
+    document.getElementById('pitchValue').textContent = this.value;
+    try { chrome.storage?.local.set({ voicePitch: +this.value }); } catch(_) {}
+  });
+
+  if (volumeSlider) volumeSlider.addEventListener('input', function() {
+    document.getElementById('volumeValue').textContent = parseFloat(this.value).toFixed(1);
+    try { chrome.storage?.local.set({ voiceVolume: +this.value }); } catch(_) {}
+  });
+
+  const emotionSelect = document.getElementById('voiceEmotion');
+  if (emotionSelect) emotionSelect.addEventListener('change', function() {
+    try { chrome.storage?.local.set({ voiceEmotion: this.value }); } catch(_) {}
+  });
+
+  try {
+    chrome.storage?.local.get(['voiceSpeed', 'voicePitch', 'voiceVolume', 'voiceEmotion'], (data) => {
+      if (speedSlider && data.voiceSpeed) {
+        speedSlider.value = data.voiceSpeed;
+        document.getElementById('speedValue').textContent = parseFloat(data.voiceSpeed).toFixed(2);
+      }
+      if (pitchSlider && typeof data.voicePitch === 'number') {
+        pitchSlider.value = data.voicePitch;
+        document.getElementById('pitchValue').textContent = data.voicePitch;
+      }
+      if (volumeSlider && data.voiceVolume) {
+        volumeSlider.value = data.voiceVolume;
+        document.getElementById('volumeValue').textContent = parseFloat(data.voiceVolume).toFixed(1);
+      }
+      if (emotionSelect && data.voiceEmotion) {
+        emotionSelect.value = data.voiceEmotion;
+      }
+    });
+  } catch(_) {}
+}
+
+document.addEventListener('DOMContentLoaded', initTuningPanel);
+
 async function speakWithMiniMax(text) {
   const outputLangEl = document.getElementById('outputLang');
   const dialect = outputLangEl?.value || '';
@@ -338,10 +406,11 @@ async function speakWithMiniMax(text) {
   if (!isSupportedDialect) return false;
 
   try {
+    const tuning = getVoiceTuning();
     const res = await fetch('https://voice-slang-translator.vercel.app/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, dialect })
+      body: JSON.stringify({ text, dialect, tuning })
     });
 
     if (!res.ok) return false;

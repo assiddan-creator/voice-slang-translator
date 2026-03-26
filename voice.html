@@ -625,6 +625,46 @@
           <option value="native">🔊 Native Browser</option>
         </select>
       </div>
+      <div id="minimaxTuningPanel" style="display:none; margin-top: 12px; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px;">
+        <div style="font-size: 11px; color: #888; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">Voice Tuning</div>
+
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <label style="font-size: 12px; color: #aaa;">Speed</label>
+            <span id="speedValue" style="font-size: 12px; color: #ff6b00;">1.05</span>
+          </div>
+          <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="1.05" style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <label style="font-size: 12px; color: #aaa;">Pitch</label>
+            <span id="pitchValue" style="font-size: 12px; color: #ff6b00;">0</span>
+          </div>
+          <input type="range" id="voicePitch" min="-12" max="12" step="1" value="0" style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <label style="font-size: 12px; color: #aaa;">Volume</label>
+            <span id="volumeValue" style="font-size: 12px; color: #ff6b00;">1.0</span>
+          </div>
+          <input type="range" id="voiceVolume" min="0.1" max="2.0" step="0.1" value="1.0" style="width: 100%;">
+        </div>
+
+        <div>
+          <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Emotion</label>
+          <select id="voiceEmotion" style="width: 100%; background: #111; color: #fff; border: 1px solid #333; padding: 6px; border-radius: 4px; font-size: 12px;">
+            <option value="neutral">😐 Neutral</option>
+            <option value="happy">😄 Happy</option>
+            <option value="angry">😡 Angry</option>
+            <option value="sad">😢 Sad</option>
+            <option value="fearful">😨 Fearful</option>
+            <option value="disgusted">🤢 Disgusted</option>
+            <option value="surprised">😲 Surprised</option>
+          </select>
+        </div>
+      </div>
       <div class="tts-engine-status" id="ttsEngineStatus">
         <span class="tts-engine-led waiting" id="ttsEngineLed"></span>
         <span id="ttsEngineText">Engine: Waiting</span>

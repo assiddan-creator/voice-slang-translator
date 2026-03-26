@@ -35,6 +35,8 @@ module.exports = async function handler(req, res) {
   }
   if (!voiceConfig) voiceConfig = { voice_id: 'Casual_Guy', speed: 1.0, pitch: 0, emotion: 'neutral' };
 
+  const tuning = (body.tuning && typeof body.tuning === 'object') ? body.tuning : null;
+
   try {
     const minimaxRes = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
@@ -47,10 +49,10 @@ module.exports = async function handler(req, res) {
         input: {
           text,
           voice_id: voiceConfig.voice_id,
-          speed: voiceConfig.speed,
-          pitch: voiceConfig.pitch,
-          emotion: voiceConfig.emotion,
-          volume: 1.0
+          speed: tuning?.speed ?? voiceConfig.speed,
+          pitch: tuning?.pitch ?? voiceConfig.pitch,
+          emotion: tuning?.emotion ?? voiceConfig.emotion,
+          volume: tuning?.volume ?? 1.0
         }
       })
     });

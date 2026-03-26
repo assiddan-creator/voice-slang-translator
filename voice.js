@@ -320,30 +320,61 @@ function shouldUsePremiumVoice() {
 }
 
 async function speakWithGoogleCloudTts(text) {
-  const voiceName = 'en-US-Journey-F';
+  const outputLangEl = document.getElementById('outputLang');
+  const langValue = outputLangEl?.value || '';
+
+  // Dynamic voice mapping based on selected dialect
+  const VOICE_MAP = {
+    'New York Brooklyn': { languageCode: 'en-US', name: 'en-US-Journey-D', gender: 'MALE', pitch: -1.5 },
+    'London Roadman': { languageCode: 'en-GB', name: 'en-GB-Neural2-D', gender: 'MALE', pitch: -1.5 },
+    'Jamaican Patois': { languageCode: 'en-GB', name: 'en-GB-Neural2-B', gender: 'MALE', pitch: -1.5 },
+    'Tokyo Gyaru': { languageCode: 'ja-JP', name: 'ja-JP-Neural2-B', gender: 'FEMALE', pitch: 0.5 },
+    'Paris Banlieue': { languageCode: 'fr-FR', name: 'fr-FR-Neural2-D', gender: 'MALE', pitch: -1.5 },
+    'Russian Street': { languageCode: 'ru-RU', name: 'ru-RU-Standard-D', gender: 'MALE', pitch: -1.5 },
+    'Mumbai Hinglish': { languageCode: 'hi-IN', name: 'hi-IN-Neural2-C', gender: 'MALE', pitch: -1.5 },
+    'Mexico City Barrio': { languageCode: 'es-US', name: 'es-US-Neural2-B', gender: 'MALE', pitch: -1.5 },
+    'Rio Favela': { languageCode: 'pt-BR', name: 'pt-BR-Neural2-B', gender: 'MALE', pitch: -1.5 },
+  };
+
+  // Find matching voice — check if langValue contains any key
+  let voiceConfig = null;
+  for (const [key, cfg] of Object.entries(VOICE_MAP)) {
+    if (langValue.includes(key)) { voiceConfig = cfg; break; }
+  }
+
+  // Default fallback voice
+  if (!voiceConfig) {
+    voiceConfig = { languageCode: 'en-US', name: 'en-US-Journey-F', gender: 'FEMALE', pitch: 0.5 };
+  }
+
   const res = await fetch(
-    'https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(googleCloudApiKey),
+    'https://texttospeech.googleapis.com/v1/text:synthesize?key=' +
+      encodeURIComponent(googleCloudApiKey),
     {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      input: { text },
-      voice: {
-        languageCode: 'en-US',
-        name: voiceName
-      },
-      audioConfig: {
-        audioEncoding: 'MP3'
-      }
-    })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text },
+        voice: {
+          languageCode: voiceConfig.languageCode,
+          name: voiceConfig.name,
+          ssmlGender: voiceConfig.gender
+        },
+        audioConfig: {
+          audioEncoding: 'MP3',
+          speakingRate: 1.05,
+          pitch: voiceConfig.pitch
+        }
+      })
     }
   );
 
   if (!res.ok) {
     const errJson = await res.json().catch(() => null);
-    const apiErrorMessage = errJson?.error?.message || errJson?.message || `Google Cloud TTS failed (${res.status})`;
+    const apiErrorMessage =
+      errJson?.error?.message ||
+      errJson?.message ||
+      `Google Cloud TTS failed (${res.status})`;
     alert(apiErrorMessage);
     throw new Error(apiErrorMessage);
   }
@@ -357,11 +388,7 @@ async function speakWithGoogleCloudTts(text) {
   }
 
   const audioUrl = `data:audio/mp3;base64,${audioContent}`;
-
-  if (premiumAudioPlayer) {
-    try { premiumAudioPlayer.pause(); } catch (_) {}
-  }
-
+  if (premiumAudioPlayer) { try { premiumAudioPlayer.pause(); } catch (_) {} }
   premiumAudioPlayer = new Audio(audioUrl);
   await premiumAudioPlayer.play();
   setTtsEngineStatus('google');

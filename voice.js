@@ -4,6 +4,9 @@ let hebrewTranscript = '';
 let displayedText = '';
 let translationMode = 'standard'; // 'standard' | 'slang'
 let lastTranslatedText = ''; // זוכר את התרגום הקודם לשמירת קול עקבי
+let premiumVoiceEnabled = false;
+let openAiTtsApiKey = '';
+let premiumAudioPlayer = null;
 
 // --- Wire up buttons ---
 document.getElementById('micBtn').addEventListener('click', toggleRecording);
@@ -15,7 +18,7 @@ document.getElementById('closeBtn').addEventListener('click', () => window.close
 // Native text-to-speech for the translated output
 const ttsBtnEl = document.getElementById('ttsPlayBtn');
 if (ttsBtnEl) {
-  ttsBtnEl.addEventListener('click', () => {
+  ttsBtnEl.addEventListener('click', async () => {
     const fallbackOutputEl = document.getElementById('output');
     const rawOutputText = (fallbackOutputEl?.textContent || '').trim();
     const textToSpeak =
@@ -26,7 +29,7 @@ if (ttsBtnEl) {
       return;
     }
 
-    speakTranslatedText(textToSpeak);
+    await speakTranslatedText(textToSpeak);
   });
 }
 
@@ -123,10 +126,12 @@ document.getElementById('outputLang').addEventListener('change', async function 
   }
 
   try {
-    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel', 'savedContext'], (data) => {
+    chrome.storage?.local.get(['savedOutputLang', 'savedSlangLevel', 'savedContext', 'premiumVoiceEnabled', 'openAiTtsApiKey'], (data) => {
       const langSelect = document.getElementById('outputLang');
       const slider = document.getElementById('slangSlider');
       const contextSelect = document.getElementById('messageContext');
+      const premiumToggle = document.getElementById('premiumVoiceToggle');
+      const apiKeyInput = document.getElementById('openaiApiKeyInput');
 
       if (langSelect && data.savedOutputLang) {
         langSelect.value = data.savedOutputLang;
@@ -144,6 +149,11 @@ document.getElementById('outputLang').addEventListener('change', async function 
       if (contextSelect && data.savedContext) {
         contextSelect.value = data.savedContext;
       }
+
+      premiumVoiceEnabled = !!data.premiumVoiceEnabled;
+      openAiTtsApiKey = (data.openAiTtsApiKey || '').trim();
+      if (premiumToggle) premiumToggle.checked = premiumVoiceEnabled;
+      if (apiKeyInput && openAiTtsApiKey) apiKeyInput.value = openAiTtsApiKey;
     });
   } catch (_) {}
 })();
@@ -163,6 +173,26 @@ if (contextSelectEl) {
   contextSelectEl.addEventListener('change', function () {
     try {
       chrome.storage?.local.set({ savedContext: this.value });
+    } catch (_) {}
+  });
+}
+
+const premiumVoiceToggleEl = document.getElementById('premiumVoiceToggle');
+if (premiumVoiceToggleEl) {
+  premiumVoiceToggleEl.addEventListener('change', function () {
+    premiumVoiceEnabled = !!this.checked;
+    try {
+      chrome.storage?.local.set({ premiumVoiceEnabled });
+    } catch (_) {}
+  });
+}
+
+const openAiApiKeyInputEl = document.getElementById('openaiApiKeyInput');
+if (openAiApiKeyInputEl) {
+  openAiApiKeyInputEl.addEventListener('input', function () {
+    openAiTtsApiKey = this.value.trim();
+    try {
+      chrome.storage?.local.set({ openAiTtsApiKey: openAiTtsApiKey });
     } catch (_) {}
   });
 }
@@ -266,7 +296,45 @@ function pickVoiceByLang(preferredLangCode) {
   return null;
 }
 
-function speakTranslatedText(text) {
+function shouldUsePremiumVoice() {
+  return !!premiumVoiceEnabled && !!openAiTtsApiKey;
+}
+
+async function speakWithOpenAiTts(text) {
+  const voiceName = translationMode === 'slang' ? 'nova' : 'alloy';
+  const res = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAiTtsApiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini-tts',
+      voice: voiceName,
+      input: text,
+      format: 'mp3'
+    })
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`OpenAI TTS failed (${res.status}): ${errText}`);
+  }
+
+  const audioBlob = await res.blob();
+  const audioUrl = URL.createObjectURL(audioBlob);
+
+  if (premiumAudioPlayer) {
+    try { premiumAudioPlayer.pause(); } catch (_) {}
+  }
+
+  premiumAudioPlayer = new Audio(audioUrl);
+  premiumAudioPlayer.onended = () => URL.revokeObjectURL(audioUrl);
+  premiumAudioPlayer.onerror = () => URL.revokeObjectURL(audioUrl);
+  await premiumAudioPlayer.play();
+}
+
+function speakWithNativeTts(text) {
   if (!window.speechSynthesis) {
     showToast('Text-to-speech not supported');
     return;
@@ -300,6 +368,19 @@ function speakTranslatedText(text) {
     window.speechSynthesis.cancel();
   } catch (_) {}
   window.speechSynthesis.speak(utterance);
+}
+
+async function speakTranslatedText(text) {
+  if (shouldUsePremiumVoice()) {
+    try {
+      await speakWithOpenAiTts(text);
+      return;
+    } catch (e) {
+      console.error('Premium TTS failed, falling back to native:', e);
+      showToast('Premium voice unavailable, using native voice');
+    }
+  }
+  speakWithNativeTts(text);
 }
 
 // Mode buttons

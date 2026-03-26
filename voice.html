@@ -323,6 +323,85 @@
     text-shadow: 0 0 6px rgba(108,99,255,0.7);
   }
 
+  /* Premium TTS settings */
+  .tts-settings {
+    margin-top: 10px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    border-radius: 14px;
+    background: radial-gradient(circle at top, #121212 0%, #050505 70%);
+    padding: 8px 10px;
+  }
+  .tts-settings summary {
+    list-style: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.8px;
+    user-select: none;
+  }
+  .tts-settings summary::-webkit-details-marker { display: none; }
+  .tts-settings-body {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tts-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .tts-setting-label {
+    font-size: 0.72rem;
+    color: var(--text);
+  }
+  .tts-api-input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: #0d0d0d;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    outline: none;
+  }
+  .tts-api-input:focus { border-color: var(--rasta-gold); }
+  .switch {
+    position: relative;
+    width: 42px;
+    height: 22px;
+    display: inline-block;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-switch {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #2a2a2a;
+    transition: 0.2s;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .slider-switch:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    top: 2px;
+    background-color: #fff;
+    transition: 0.2s;
+    border-radius: 50%;
+  }
+  .switch input:checked + .slider-switch {
+    background: linear-gradient(135deg, var(--rasta-red), var(--rasta-gold), var(--rasta-green));
+  }
+  .switch input:checked + .slider-switch:before {
+    transform: translateX(20px);
+  }
+
   /* Actions */
   .actions { display: flex; gap: 7px; }
   .paste-btn {
@@ -504,6 +583,24 @@
     <h4>📚 Slang Dictionary</h4>
     <div id="dictContent"></div>
   </div>
+
+  <details class="tts-settings">
+    <summary>🔊 Premium Voice Settings</summary>
+    <div class="tts-settings-body">
+      <div class="tts-setting-row">
+        <span class="tts-setting-label">Premium Voice</span>
+        <label class="switch">
+          <input type="checkbox" id="premiumVoiceToggle">
+          <span class="slider-switch"></span>
+        </label>
+      </div>
+      <input
+        type="password"
+        id="openaiApiKeyInput"
+        class="tts-api-input"
+        placeholder="OpenAI API key for premium TTS">
+    </div>
+  </details>
 
   <!-- Actions -->
   <div class="actions">

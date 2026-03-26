@@ -150,6 +150,59 @@
   }
   .mode-btn:hover:not(.active-standard):not(.active-slang) { border-color: rgba(255,255,255,0.25); color: var(--text); }
 
+  /* View tabs (Standard vs Duo) */
+  .view-tabs {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 6px;
+  }
+  .view-tab {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .view-tab.active {
+    background: radial-gradient(circle at top, #18120a 0%, #050505 70%);
+    color: var(--rasta-gold);
+  }
+
+  /* Duo mode walkie-talkie buttons */
+  .duo-controls {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  .duo-controls .section-label { margin-bottom: 8px; }
+  .duo-btn-row { display: flex; gap: 10px; }
+  .duo-record-btn {
+    flex: 1;
+    padding: 14px 10px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    border-image: linear-gradient(90deg, var(--rasta-green), var(--rasta-gold), var(--rasta-red)) 1;
+    background: radial-gradient(circle at top, #141414 0%, #050505 70%);
+    color: var(--text);
+    font-family: 'Heebo', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .duo-record-btn:hover { transform: translateY(-1px); }
+  .duo-record-btn.recording {
+    background: radial-gradient(circle at top, #0f1a12 0%, #050505 70%);
+    color: var(--rasta-green);
+  }
+
   /* Slang location input */
   .slang-field {
     display: none; flex-direction: column; gap: 4px;
@@ -314,6 +367,12 @@
     <button class="close-btn" id="closeBtn">✕</button>
   </div>
 
+  <!-- View tabs -->
+  <div class="view-tabs" id="viewTabs">
+    <button class="view-tab active" id="tabStandard" type="button">Standard Mode</button>
+    <button class="view-tab" id="tabDuo" type="button">Duo Mode</button>
+  </div>
+
   <!-- Input & Output language -->
   <div>
     <div class="section-label">Input / Output language</div>
@@ -403,6 +462,15 @@
   <div id="locationFieldContainer" style="margin-top: 15px; margin-bottom: 15px;">
     <label style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; display: block;">📍 Location / dialect (e.g. London, Cairo, Scotland)</label>
     <input type="text" id="slangLocation" style="width: 100%; background: #111; color: #fff; padding: 10px; border: 1px solid #333; border-radius: 5px; outline: none; font-family: inherit;">
+  </div>
+
+  <!-- Duo mode walkie-talkie -->
+  <div id="duoControls" class="duo-controls" style="display:none;">
+    <div class="section-label">Duo Mode</div>
+    <div class="duo-btn-row">
+      <button class="duo-record-btn" id="duoMyTurnBtn" type="button">My Turn</button>
+      <button class="duo-record-btn" id="duoTheirTurnBtn" type="button">Their Turn</button>
+    </div>
   </div>
 
   <!-- Mic -->

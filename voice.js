@@ -30,6 +30,64 @@ if (ttsBtnEl) {
   });
 }
 
+// --- View switching: Standard vs Duo ---
+let viewMode = 'standard'; // 'standard' | 'duo'
+let duoActiveTurn = null; // 'my' | 'their' | null
+
+function setViewMode(mode) {
+  viewMode = mode;
+  const duoControls = document.getElementById('duoControls');
+  const micArea = document.querySelector('.mic-area');
+  const inputWrap = document.querySelector('.input-text-wrap');
+
+  const duoShow = mode === 'duo';
+
+  if (duoControls) duoControls.style.display = duoShow ? 'block' : 'none';
+  if (micArea) micArea.style.display = duoShow ? 'none' : 'flex';
+  if (inputWrap) inputWrap.style.display = duoShow ? 'none' : 'flex';
+
+  const tabStandard = document.getElementById('tabStandard');
+  const tabDuo = document.getElementById('tabDuo');
+  if (tabStandard) tabStandard.classList.toggle('active', mode === 'standard');
+  if (tabDuo) tabDuo.classList.toggle('active', mode === 'duo');
+
+  // Stop any active listening when switching views
+  try {
+    if (isRecording) stopRecording();
+  } catch (_) {}
+  try {
+    if (duoActiveTurn) stopDuoRecording();
+  } catch (_) {}
+}
+
+const tabStandardBtn = document.getElementById('tabStandard');
+const tabDuoBtn = document.getElementById('tabDuo');
+if (tabStandardBtn && tabDuoBtn) {
+  tabStandardBtn.addEventListener('click', () => setViewMode('standard'));
+  tabDuoBtn.addEventListener('click', () => setViewMode('duo'));
+}
+
+// Duo buttons
+const duoMyTurnBtn = document.getElementById('duoMyTurnBtn');
+const duoTheirTurnBtn = document.getElementById('duoTheirTurnBtn');
+if (duoMyTurnBtn) {
+  duoMyTurnBtn.addEventListener('click', () => {
+    if (viewMode !== 'duo') return;
+    if (duoActiveTurn === 'my') stopDuoRecording();
+    else startDuoRecording('my');
+  });
+}
+if (duoTheirTurnBtn) {
+  duoTheirTurnBtn.addEventListener('click', () => {
+    if (viewMode !== 'duo') return;
+    if (duoActiveTurn === 'their') stopDuoRecording();
+    else startDuoRecording('their');
+  });
+}
+
+// Default view
+setViewMode('standard');
+
 // Manual translate: paste text and click to translate
 document.getElementById('manualTranslateBtn').addEventListener('click', async function () {
   const text = document.getElementById('inputText').value.trim();
@@ -404,6 +462,126 @@ function initRecognition() {
   };
   r.onend = () => { if (isRecording) r.start(); };
   return r;
+}
+
+function getRecognitionLangForOutputLang(outputLangValue) {
+  const v = String(outputLangValue || '');
+
+  // Premium slang dialects
+  if (v.includes('Jamaican Patois')) return 'en-JM';
+  if (v.includes('London Roadman')) return 'en-GB';
+  if (v.includes('New York Brooklyn')) return 'en-US';
+  if (v.includes('Tokyo Gyaru')) return 'ja-JP';
+  if (v.includes('Paris Banlieue')) return 'fr-FR';
+  if (v.includes('Russian Street')) return 'ru-RU';
+  if (v.includes('Mumbai Hinglish')) return 'hi-IN';
+  if (v.includes('Mexico City Barrio')) return 'es-MX';
+  if (v.includes('Rio Favela')) return 'pt-BR';
+
+  // Standard languages
+  if (v.includes('Hebrew (Standard)')) return 'he-IL';
+  if (v.includes('English (Standard)')) return 'en-US';
+  if (v === 'Spanish') return 'es-ES';
+  if (v === 'French') return 'fr-FR';
+  if (v === 'German') return 'de-DE';
+  if (v === 'Italian') return 'it-IT';
+  if (v === 'Russian') return 'ru-RU';
+  if (v === 'Portuguese') return 'pt-PT';
+  if (v === 'Japanese') return 'ja-JP';
+
+  // Best-effort fallback
+  return document.getElementById('inputLang')?.value || 'en-US';
+}
+
+function setDuoButtonRecording(which, isRecordingNow) {
+  const myBtn = document.getElementById('duoMyTurnBtn');
+  const theirBtn = document.getElementById('duoTheirTurnBtn');
+  if (!myBtn || !theirBtn) return;
+
+  if (!myBtn.dataset.originalText) myBtn.dataset.originalText = myBtn.textContent.trim();
+  if (!theirBtn.dataset.originalText) theirBtn.dataset.originalText = theirBtn.textContent.trim();
+
+  if (which === 'my') {
+    myBtn.classList.toggle('recording', isRecordingNow);
+    myBtn.textContent = isRecordingNow ? '⏹️ Stop' : myBtn.dataset.originalText;
+  }
+  if (which === 'their') {
+    theirBtn.classList.toggle('recording', isRecordingNow);
+    theirBtn.textContent = isRecordingNow ? '⏹️ Stop' : theirBtn.dataset.originalText;
+  }
+}
+
+function initDuoRecognition(langCode) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = langCode;
+
+  r.onstart = () => setStatus('Listening...', 'listening');
+
+  r.onresult = async (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i];
+      if (!res || !res[0]) continue;
+      const t = res[0].transcript || '';
+
+      if (res.isFinal) {
+        hebrewTranscript = t;
+        const tr = await translate(t);
+        displayedText = tr;
+        setOutput(displayedText);
+        speakTranslatedText(displayedText);
+      } else {
+        interim = t;
+      }
+    }
+    const interimEl = document.getElementById('interim');
+    if (interimEl) interimEl.textContent = interim;
+  };
+
+  r.onerror = (e) => {
+    const msgs = { 'not-allowed': 'Allow microphone and try again', 'no-speech': 'No speech detected', 'network': 'Network error' };
+    setStatus(msgs[e.error] || 'Error: ' + e.error, '');
+    stopDuoRecording();
+  };
+
+  r.onend = () => { if (isRecording) r.start(); };
+  return r;
+}
+
+function startDuoRecording(which) {
+  stopDuoRecording();
+
+  const inputLang = document.getElementById('inputLang')?.value || 'en-US';
+  const outputLangValue = document.getElementById('outputLang')?.value || 'English (Standard)';
+  const langCode = which === 'my' ? inputLang : getRecognitionLangForOutputLang(outputLangValue);
+
+  recognition = initDuoRecognition(langCode);
+  if (!recognition) { setStatus('Use Chrome', ''); return; }
+
+  try {
+    recognition.start();
+    isRecording = true;
+    duoActiveTurn = which;
+    setDuoButtonRecording(which, true);
+  } catch (e) {
+    setStatus('Error: ' + e.message, '');
+    duoActiveTurn = null;
+  }
+}
+
+function stopDuoRecording() {
+  isRecording = false;
+  duoActiveTurn = null;
+  if (recognition) { try { recognition.stop(); } catch (_) {} }
+  recognition = null;
+
+  setDuoButtonRecording('my', false);
+  setDuoButtonRecording('their', false);
+  setStatus('Ready', '');
 }
 
 function toggleRecording() { isRecording ? stopRecording() : startRecording(); }

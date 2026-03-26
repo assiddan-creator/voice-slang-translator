@@ -319,6 +319,74 @@ function shouldUsePremiumVoice() {
   return !!premiumVoiceEnabled && !!googleCloudApiKey;
 }
 
+async function speakWithMiniMax(text) {
+  const outputLangEl = document.getElementById('outputLang');
+  const dialect = outputLangEl?.value || '';
+
+  const MINIMAX_DIALECTS = [
+    'New York Brooklyn',
+    'London Roadman',
+    'Jamaican Patois',
+    'Tokyo Gyaru',
+    'Paris Banlieue',
+    'Russian Street',
+    'Mumbai Hinglish',
+    'Mexico City Barrio',
+    'Rio Favela'
+  ];
+
+  const isSupportedDialect = MINIMAX_DIALECTS.some(d => dialect.includes(d));
+  if (!isSupportedDialect) return false;
+
+  try {
+    const res = await fetch('https://voice-slang-translator.vercel.app/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, dialect })
+    });
+
+    if (!res.ok) return false;
+
+    const data = await res.json();
+
+    if (data.output) {
+      if (premiumAudioPlayer) { try { premiumAudioPlayer.pause(); } catch (_) {} }
+      premiumAudioPlayer = new Audio(data.output);
+      await premiumAudioPlayer.play();
+      setTtsEngineStatus('google');
+      return true;
+    }
+
+    if (data.predictionId && !data.output) {
+      const audioUrl = await pollForAudio(data.predictionId);
+      if (!audioUrl) return false;
+      if (premiumAudioPlayer) { try { premiumAudioPlayer.pause(); } catch (_) {} }
+      premiumAudioPlayer = new Audio(audioUrl);
+      await premiumAudioPlayer.play();
+      setTtsEngineStatus('google');
+      return true;
+    }
+
+    return false;
+  } catch (e) {
+    console.error('MiniMax TTS failed:', e);
+    return false;
+  }
+}
+
+async function pollForAudio(predictionId, maxAttempts = 20, intervalMs = 2000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, intervalMs));
+    try {
+      const res = await fetch('https://api.replicate.com/v1/predictions/' + predictionId);
+      const data = await res.json();
+      if (data.status === 'succeeded' && data.output) return data.output;
+      if (data.status === 'failed') return null;
+    } catch (_) {}
+  }
+  return null;
+}
+
 async function speakWithGoogleCloudTts(text) {
   const outputLangEl = document.getElementById('outputLang');
   const langValue = outputLangEl?.value || '';
@@ -432,11 +500,14 @@ function speakWithNativeTts(text) {
 
 async function speakTranslatedText(text) {
   if (shouldUsePremiumVoice()) {
+    const minimaxSuccess = await speakWithMiniMax(text);
+    if (minimaxSuccess) return;
+
     try {
       await speakWithGoogleCloudTts(text);
       return;
     } catch (e) {
-      console.error('Premium TTS failed, falling back to native:', e);
+      console.error('Google TTS failed, falling back to native:', e);
       setTtsEngineStatus('fallback');
       showToast('Premium voice unavailable, using native voice');
     }

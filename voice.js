@@ -316,7 +316,7 @@ function pickVoiceByLang(preferredLangCode) {
 }
 
 function shouldUsePremiumVoice() {
-  return !!premiumVoiceEnabled && !!googleCloudApiKey;
+  return !!premiumVoiceEnabled;
 }
 
 async function speakWithMiniMax(text) {

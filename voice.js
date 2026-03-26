@@ -324,15 +324,9 @@ async function speakWithMiniMax(text) {
   const dialect = outputLangEl?.value || '';
 
   const MINIMAX_DIALECTS = [
-    'New York Brooklyn',
-    'London Roadman',
-    'Jamaican Patois',
-    'Tokyo Gyaru',
-    'Paris Banlieue',
-    'Russian Street',
-    'Mumbai Hinglish',
-    'Mexico City Barrio',
-    'Rio Favela'
+    'New York Brooklyn', 'London Roadman', 'Jamaican Patois',
+    'Tokyo Gyaru', 'Paris Banlieue', 'Russian Street',
+    'Mumbai Hinglish', 'Mexico City Barrio', 'Rio Favela'
   ];
 
   const isSupportedDialect = MINIMAX_DIALECTS.some(d => dialect.includes(d));
@@ -346,7 +340,6 @@ async function speakWithMiniMax(text) {
     });
 
     if (!res.ok) return false;
-
     const data = await res.json();
 
     if (data.output) {
@@ -357,7 +350,7 @@ async function speakWithMiniMax(text) {
       return true;
     }
 
-    if (data.predictionId && !data.output) {
+    if (data.predictionId) {
       const audioUrl = await pollForAudio(data.predictionId);
       if (!audioUrl) return false;
       if (premiumAudioPlayer) { try { premiumAudioPlayer.pause(); } catch (_) {} }
@@ -378,7 +371,11 @@ async function pollForAudio(predictionId, maxAttempts = 20, intervalMs = 2000) {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
     try {
-      const res = await fetch('https://api.replicate.com/v1/predictions/' + predictionId);
+      const res = await fetch('https://voice-slang-translator.vercel.app/api/tts-poll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ predictionId })
+      });
       const data = await res.json();
       if (data.status === 'succeeded' && data.output) return data.output;
       if (data.status === 'failed') return null;

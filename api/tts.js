@@ -6,8 +6,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'Missing MINIMAX_API_KEY' });
+  const apiKey = process.env.REPLICATE_API_TOKEN;
+  if (!apiKey) return res.status(500).json({ error: 'Missing REPLICATE_API_TOKEN' });
 
   let body = req.body;
   if (typeof body === 'string') {

@@ -617,6 +617,14 @@
           <span class="slider-switch"></span>
         </label>
       </div>
+      <div style="margin-top: 10px;">
+        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">TTS Engine</label>
+        <select id="ttsEngineSelector" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <option value="minimax">🤖 MiniMax (Replicate)</option>
+          <option value="google">☁️ Google Cloud</option>
+          <option value="native">🔊 Native Browser</option>
+        </select>
+      </div>
       <div class="tts-engine-status" id="ttsEngineStatus">
         <span class="tts-engine-led waiting" id="ttsEngineLed"></span>
         <span id="ttsEngineText">Engine: Waiting</span>

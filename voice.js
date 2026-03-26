@@ -319,6 +319,11 @@ function shouldUsePremiumVoice() {
   return !!premiumVoiceEnabled;
 }
 
+function getSelectedTtsEngine() {
+  const el = document.getElementById('ttsEngineSelector');
+  return el ? el.value : 'minimax';
+}
+
 async function speakWithMiniMax(text) {
   const outputLangEl = document.getElementById('outputLang');
   const dialect = outputLangEl?.value || '';
@@ -496,19 +501,45 @@ function speakWithNativeTts(text) {
 }
 
 async function speakTranslatedText(text) {
-  if (shouldUsePremiumVoice()) {
-    const minimaxSuccess = await speakWithMiniMax(text);
-    if (minimaxSuccess) return;
+  if (!shouldUsePremiumVoice()) {
+    speakWithNativeTts(text);
+    return;
+  }
 
+  const engine = getSelectedTtsEngine();
+
+  if (engine === 'native') {
+    speakWithNativeTts(text);
+    return;
+  }
+
+  if (engine === 'minimax') {
+    const ok = await speakWithMiniMax(text);
+    if (ok) return;
+    showToast('MiniMax failed, trying Google...');
     try {
       await speakWithGoogleCloudTts(text);
       return;
     } catch (e) {
-      console.error('Google TTS failed, falling back to native:', e);
+      showToast('Google also failed, using native voice');
       setTtsEngineStatus('fallback');
-      showToast('Premium voice unavailable, using native voice');
     }
+    speakWithNativeTts(text);
+    return;
   }
+
+  if (engine === 'google') {
+    try {
+      await speakWithGoogleCloudTts(text);
+      return;
+    } catch (e) {
+      showToast('Google failed, using native voice');
+      setTtsEngineStatus('fallback');
+    }
+    speakWithNativeTts(text);
+    return;
+  }
+
   speakWithNativeTts(text);
 }
 
